@@ -1,0 +1,11 @@
+{
+ "namespace": "example.gcp",
+ "type": "record",
+ "name": "Client",
+         "fields": [
+ {"name": "id", "type": "long"},
+ {"name": "name", "type": "string"},
+ {"name": "phone", "type": ["string", "null"]},
+ {"name": "address", "type": ["string", "null"]}
+ ]
+}
