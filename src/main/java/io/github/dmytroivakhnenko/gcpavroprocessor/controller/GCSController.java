@@ -12,7 +12,7 @@ import java.nio.charset.Charset;
 
 @RestController
 public class GCSController {
-    @Value("gs://gcp_avro_processor_input_bucket/my-file.txt")
+    @Value("gs://gcp_avro_processor_input_bucket/client_test.avro")
     private Resource gcsFile;
 
     @RequestMapping(value = "/bucket", method = RequestMethod.GET)

@@ -8,6 +8,6 @@ public class AvroFileGeneratorServiceImpl implements AvroFileGeneratorService {
     @Override
     public void generate(String prefix, int count) {
         AvroFileGenerator avroFileGenerator = new AvroFileGenerator();
-        avroFileGenerator.generate("");
+        avroFileGenerator.generate("", 1);
     }
 }

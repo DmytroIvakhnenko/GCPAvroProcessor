@@ -29,7 +29,7 @@ public class AvroFileGenerator {
         return client;
     }
 
-    public void generate(final String prefix) {
+    public void generate(final String prefix, final int count) {
         Client client = createRandomClient();
         DatumWriter<Client> clientDatumWriter = new SpecificDatumWriter<>(Client.class);
         try (DataFileWriter<Client> clientDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
@@ -42,6 +42,6 @@ public class AvroFileGenerator {
 
     public static void main(String[] args) {
         AvroFileGenerator ag = new AvroFileGenerator();
-        ag.generate("");
+        ag.generate("", 1);
     }
 }
