@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.annotation.InboundChannelAdapter;
 import org.springframework.integration.annotation.Poller;
 import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.config.EnableIntegration;
 import org.springframework.integration.core.MessageSource;
 import org.springframework.integration.expression.ValueExpression;
 import org.springframework.integration.file.FileHeaders;
@@ -22,6 +23,7 @@ import org.springframework.messaging.MessageHandler;
 import java.io.InputStream;
 
 @Configuration
+@EnableIntegration
 public class IntegrationConfig {
     private static final Logger LOG = LoggerFactory.getLogger(IntegrationConfig.class);
 
