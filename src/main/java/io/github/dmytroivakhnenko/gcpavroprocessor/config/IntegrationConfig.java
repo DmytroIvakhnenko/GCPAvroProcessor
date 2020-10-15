@@ -15,7 +15,6 @@ import org.springframework.integration.annotation.InboundChannelAdapter;
 import org.springframework.integration.annotation.Poller;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.core.MessageSource;
-import org.springframework.integration.expression.ValueExpression;
 import org.springframework.integration.file.FileHeaders;
 import org.springframework.messaging.MessageHandler;
 
@@ -43,7 +42,6 @@ public class IntegrationConfig {
     public MessageSource<InputStream> streamingAdapter(Storage gcs) {
         GcsStreamingMessageSource adapter = new GcsStreamingMessageSource(
                 new GcsRemoteFileTemplate(new GcsSessionFactory(gcs)));
-        adapter.setRemoteDirectory(this.bucketName);
         adapter.setFilter(new GcsSimplePatternFileListFilter(avroFilePattern));
         return adapter;
     }
@@ -59,8 +57,7 @@ public class IntegrationConfig {
     @ServiceActivator(inputChannel = "streamingChannel")
     public MessageHandler outboundChannelAdapter(Storage gcs) {
         GcsMessageHandler outboundChannelAdapter = new GcsMessageHandler(new GcsSessionFactory(gcs));
-        outboundChannelAdapter.setRemoteDirectoryExpression(
-                new ValueExpression<>(this.bucketName));
+
         outboundChannelAdapter
                 .setFileNameGenerator((message) -> {
                     LOG.info(message.getHeaders().get(FileHeaders.FILENAME, String.class));
