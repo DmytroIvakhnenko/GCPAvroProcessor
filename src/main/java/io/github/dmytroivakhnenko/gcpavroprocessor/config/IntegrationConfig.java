@@ -57,7 +57,7 @@ public class IntegrationConfig {
     public MessageSource<File> synchronizerAdapter(GcsInboundFileSynchronizer synchronizer) {
         GcsInboundFileSynchronizingMessageSource syncAdapter = new GcsInboundFileSynchronizingMessageSource(
                 synchronizer);
-        syncAdapter.setLocalDirectory(Paths.get("").toFile());
+        syncAdapter.setLocalDirectory(Paths.get(".").toFile());
 
         return syncAdapter;
     }
