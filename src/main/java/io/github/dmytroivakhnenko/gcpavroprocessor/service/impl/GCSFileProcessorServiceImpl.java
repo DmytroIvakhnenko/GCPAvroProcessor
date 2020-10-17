@@ -1,6 +1,7 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 
 
+import com.google.cloud.bigquery.*;
 import com.google.cloud.storage.*;
 import example.gcp.Client;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
@@ -26,8 +27,11 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         LOG.info(
                 "File " + new String(blob.getContent()) + " received by the non-streaming inbound "
                         + "channel adapter.");
-        var client = deserialize(blob);
-        LOG.info("Deserialized file: " + client.toString());
+        String gcsPath = String.format("gs://%s/%s", blobInfo.getBucket(), blobInfo.getName());
+        loadAvroFromGcs(gcsPath);
+
+        //var client = deserialize(blob);
+        //LOG.info("Deserialized file: " + client.toString());
     }
 
     private Client deserialize(Blob blob) {
@@ -42,5 +46,34 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
             LOG.error("Exception occurs during avro file deserialization", e);
         }
         return client;
+    }
+
+    private void loadAvroFromGcs(String sourceUri) {
+
+        var datasetName = "clients_dataset";
+        var tableName = "client_full";
+        try {
+            // Initialize client that will be used to send requests. This client only needs to be created
+            // once, and can be reused for multiple requests.
+            BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
+
+            TableId tableId = TableId.of(datasetName, tableName);
+            LoadJobConfiguration loadConfig =
+                    LoadJobConfiguration.of(tableId, sourceUri, FormatOptions.avro());
+
+            // Load data from a GCS Avro file into the table
+            Job job = bigquery.create(JobInfo.of(loadConfig));
+            // Blocks until this load table job completes its execution, either failing or succeeding.
+            job = job.waitFor();
+            if (job.isDone()) {
+                LOG.info("Avro from GCS successfully loaded in a table");
+            } else {
+                LOG.error(
+                        "BigQuery was unable to load into the table due to an error:"
+                                + job.getStatus().getError());
+            }
+        } catch (BigQueryException | InterruptedException e) {
+            LOG.error("Column not added during load append \n" + e.toString());
+        }
     }
 }
