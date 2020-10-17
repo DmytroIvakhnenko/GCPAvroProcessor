@@ -3,7 +3,6 @@ package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 
 import com.google.cloud.bigquery.*;
 import com.google.cloud.storage.*;
-import com.google.common.util.concurrent.ListenableFuture;
 import example.gcp.Client;
 import io.github.dmytroivakhnenko.gcpavroprocessor.config.BigQueryIntegrationConfig;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
@@ -14,6 +13,7 @@ import org.apache.avro.specific.SpecificDatumReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.util.concurrent.ListenableFuture;
 
 import java.io.IOException;
 

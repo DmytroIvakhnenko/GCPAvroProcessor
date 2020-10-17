@@ -2,7 +2,6 @@ package io.github.dmytroivakhnenko.gcpavroprocessor.config;
 
 import com.google.cloud.bigquery.FormatOptions;
 import com.google.cloud.bigquery.Job;
-import com.google.common.util.concurrent.ListenableFuture;
 import org.springframework.cloud.gcp.bigquery.core.BigQueryTemplate;
 import org.springframework.cloud.gcp.bigquery.integration.BigQuerySpringMessageHeaders;
 import org.springframework.cloud.gcp.bigquery.integration.outbound.BigQueryFileMessageHandler;
@@ -14,6 +13,7 @@ import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.gateway.GatewayProxyFactoryBean;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.util.concurrent.ListenableFuture;
 
 /**
  * Configuration for BigQuery with Spring Integration

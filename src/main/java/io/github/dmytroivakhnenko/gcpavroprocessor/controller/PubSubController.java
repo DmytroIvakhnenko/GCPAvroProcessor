@@ -3,7 +3,6 @@ package io.github.dmytroivakhnenko.gcpavroprocessor.controller;
 
 import com.google.cloud.bigquery.Job;
 import com.google.cloud.storage.BlobInfo;
-import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
@@ -12,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
