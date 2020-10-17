@@ -1,14 +1,18 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 
 
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.*;
+import example.gcp.Client;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
+import org.apache.avro.io.DatumReader;
+import org.apache.avro.io.Decoder;
+import org.apache.avro.io.DecoderFactory;
+import org.apache.avro.specific.SpecificDatumReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
+import java.io.IOException;
 
 @Service
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
@@ -22,5 +26,21 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         LOG.info(
                 "File " + new String(blob.getContent()) + " received by the non-streaming inbound "
                         + "channel adapter.");
+        var client = deserialize(blob);
+        LOG.info("Deserialized file: " + client.toString());
+    }
+
+    private Client deserialize(Blob blob) {
+        //DeSerializing the objects
+        DatumReader<Client> empDatumReader = new SpecificDatumReader<>(Client.class);
+
+        Decoder decoder = DecoderFactory.get().binaryDecoder(blob.getContent(), null);
+        Client client = null;
+        try {
+            client = empDatumReader.read(null, decoder);
+        } catch (IOException e) {
+            LOG.error("Exception occurs during avro file deserialization", e);
+        }
+        return client;
     }
 }
