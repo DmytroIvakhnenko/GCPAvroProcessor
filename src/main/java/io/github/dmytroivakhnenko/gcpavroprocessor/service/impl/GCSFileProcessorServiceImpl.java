@@ -1,7 +1,6 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 
 
-import com.google.api.client.util.Value;
 import com.google.cloud.bigquery.*;
 import com.google.cloud.storage.*;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -24,8 +23,8 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     private static Storage storage = StorageOptions.getDefaultInstance().getService();
     private BigQueryIntegrationConfig.BigQueryFileGateway bigQueryFileGateway;
 
-    @Value("${bigquery.tableName.full}")
-    private String tableNameFull;
+    //@Value("${bigquery.tableName.full}")
+    private String tableNameFull = "client_full";
 
     public GCSFileProcessorServiceImpl(BigQueryIntegrationConfig.BigQueryFileGateway bigQueryFileGateway) {
         this.bigQueryFileGateway = bigQueryFileGateway;
@@ -52,7 +51,6 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         LOG.info(
                 "File " + new String(blob.getContent()) + " received by the non-streaming inbound "
                         + "channel adapter.");
-        String gcsPath = String.format("gs://%s/%s", blobInfo.getBucket(), blobInfo.getName());
         return bigQueryFileGateway.writeToBigQueryTable(blob.getContent(), tableNameFull);
 
     }
