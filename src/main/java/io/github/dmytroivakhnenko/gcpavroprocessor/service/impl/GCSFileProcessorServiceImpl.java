@@ -1,9 +1,12 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 
 
+import com.google.api.client.util.Value;
 import com.google.cloud.bigquery.*;
 import com.google.cloud.storage.*;
+import com.google.common.util.concurrent.ListenableFuture;
 import example.gcp.Client;
+import io.github.dmytroivakhnenko.gcpavroprocessor.config.BigQueryIntegrationConfig;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.Decoder;
@@ -19,6 +22,14 @@ import java.io.IOException;
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     private static final Logger LOG = LoggerFactory.getLogger(GCSFileProcessorServiceImpl.class);
     private static Storage storage = StorageOptions.getDefaultInstance().getService();
+    private BigQueryIntegrationConfig.BigQueryFileGateway bigQueryFileGateway;
+
+    @Value("${bigquery.tableName.full}")
+    private String tableNameFull;
+
+    public GCSFileProcessorServiceImpl(BigQueryIntegrationConfig.BigQueryFileGateway bigQueryFileGateway) {
+        this.bigQueryFileGateway = bigQueryFileGateway;
+    }
 
     @Override
     public void processFile(BlobInfo blobInfo) {
@@ -32,6 +43,18 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
 
         //var client = deserialize(blob);
         //LOG.info("Deserialized file: " + client.toString());
+    }
+
+    @Override
+    public ListenableFuture<Job> processFileViaIntegration(BlobInfo blobInfo) {
+        var blob = storage.get(BlobId.of(blobInfo.getBucket(), blobInfo.getName()));
+
+        LOG.info(
+                "File " + new String(blob.getContent()) + " received by the non-streaming inbound "
+                        + "channel adapter.");
+        String gcsPath = String.format("gs://%s/%s", blobInfo.getBucket(), blobInfo.getName());
+        return bigQueryFileGateway.writeToBigQueryTable(blob.getContent(), tableNameFull);
+
     }
 
     private Client deserialize(Blob blob) {
@@ -49,7 +72,6 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     }
 
     private void loadAvroFromGcs(String sourceUri) {
-
         var datasetName = "clients_dataset";
         var tableName = "client_full";
         try {
@@ -58,8 +80,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
             BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
 
             TableId tableId = TableId.of(datasetName, tableName);
-            LoadJobConfiguration loadConfig =
-                    LoadJobConfiguration.of(tableId, sourceUri, FormatOptions.avro());
+            LoadJobConfiguration loadConfig = LoadJobConfiguration.of(tableId, sourceUri, FormatOptions.avro());
 
             // Load data from a GCS Avro file into the table
             Job job = bigquery.create(JobInfo.of(loadConfig));

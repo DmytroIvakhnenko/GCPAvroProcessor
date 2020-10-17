@@ -1,6 +1,9 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.controller;
 
+
+import com.google.cloud.bigquery.Job;
 import com.google.cloud.storage.BlobInfo;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
@@ -63,8 +66,18 @@ public class PubSubController {
         LOG.info("Name = " + data.get("name") + " Bucket = " + data.get("bucket"));
 
         var blobInfo = BlobInfo.newBuilder(bucketName.get().getAsString(), fileName.get().getAsString()).build();
-        gcsFileProcessorService.processFile(blobInfo);
 
-        return new ResponseEntity(HttpStatus.OK);
+        return getResponse(gcsFileProcessorService.processFileViaIntegration(blobInfo));
+    }
+
+    private ResponseEntity getResponse(ListenableFuture<Job> loadJob) {
+        try {
+            var job = loadJob.get();
+            return new ResponseEntity(HttpStatus.OK);
+        } catch (Exception e) {
+            var msg = "Error during data load to BigQuery";
+            LOG.error(msg, e);
+            return new ResponseEntity(msg, HttpStatus.BAD_REQUEST);
+        }
     }
 }
