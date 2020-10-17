@@ -4,29 +4,29 @@ package io.github.dmytroivakhnenko.gcpavroprocessor.util;
 // additional information regarding Pub/Sub events.
 public class PubSubEvent {
 
-    private Payload payload;
+    private Message message;
 
     public PubSubEvent() {
     }
 
-    public Payload getPayload() {
-        return payload;
+    public Message getMessage() {
+        return message;
     }
 
-    public void setPayload(Payload payload) {
-        this.payload = payload;
+    public void setMessage(Message message) {
+        this.message = message;
     }
 
-    public class Payload {
+    public class Message {
 
         private String messageId;
         private String publishTime;
         private String data;
 
-        public Payload() {
+        public Message() {
         }
 
-        public Payload(String messageId, String publishTime, String data) {
+        public Message(String messageId, String publishTime, String data) {
             this.messageId = messageId;
             this.publishTime = publishTime;
             this.data = data;

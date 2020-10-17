@@ -32,7 +32,7 @@ public class PubSubController {
     @RequestMapping(value = "/pubsub", method = RequestMethod.POST)
     public ResponseEntity receiveMessage(@RequestBody PubSubEvent event) {
         // Get PubSub message from request body.
-        var payload = Optional.ofNullable(event.getPayload());
+        var payload = Optional.ofNullable(event.getMessage());
         if (payload.isEmpty()) {
             var msg = "Bad Request: invalid Pub/Sub message format";
             LOG.error(msg);
