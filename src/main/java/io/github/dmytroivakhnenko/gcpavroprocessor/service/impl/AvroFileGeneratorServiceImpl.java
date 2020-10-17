@@ -1,5 +1,6 @@
-package io.github.dmytroivakhnenko.gcpavroprocessor.service;
+package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 
+import io.github.dmytroivakhnenko.gcpavroprocessor.service.AvroFileGeneratorService;
 import io.github.dmytroivakhnenko.gcpavroprocessor.util.AvroFileGenerator;
 import org.springframework.stereotype.Service;
 
