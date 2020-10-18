@@ -7,8 +7,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class AvroFileGeneratorServiceImpl implements AvroFileGeneratorService {
     @Override
-    public void generate(String prefix, int count) {
+    public void generate(final String name, final int fileCount, final int clientsCount) {
         AvroFileGenerator avroFileGenerator = new AvroFileGenerator();
-        avroFileGenerator.generate("", 1);
+        avroFileGenerator.generate(name, fileCount, clientsCount);
     }
 }

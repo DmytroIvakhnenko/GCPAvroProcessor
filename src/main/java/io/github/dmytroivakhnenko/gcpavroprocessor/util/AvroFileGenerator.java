@@ -15,13 +15,14 @@ import java.nio.file.Paths;
 
 public class AvroFileGenerator {
     private static final Logger LOG = LoggerFactory.getLogger(AvroFileGenerator.class);
-    private static final String AVRO_FILE_NAME = "client_test.avro";
+    private static final String AVRO_FILE_EXT = ".avro";
+    private static final String AVRO_FILE_PROJECT_PATH = "/src/test/resources/avro/";
     private static final int NAME_LENGTH = 10;
     private static final int PHONE_LENGTH = 8;
     private static final int ADDRESS_LENGTH = 30;
 
     private Client createRandomClient() {
-        Client client = new Client();
+        var client = new Client();
         client.setId(RandomUtils.nextLong());
         client.setName(RandomStringUtils.randomAlphabetic(NAME_LENGTH));
         client.setPhone(RandomStringUtils.randomNumeric(PHONE_LENGTH));
@@ -29,12 +30,18 @@ public class AvroFileGenerator {
         return client;
     }
 
-    public void generate(final String prefix, final int count) {
-        Client client = createRandomClient();
+    public void generate(final String name, final int fileCount, final int clientsCount) {
+        var client = new Client();
         DatumWriter<Client> clientDatumWriter = new SpecificDatumWriter<>(Client.class);
         try (DataFileWriter<Client> clientDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
-            clientDataFileWriter.create(client.getSchema(), new File(Paths.get("").toAbsolutePath().normalize().toString() + "/src/test/resources/avro/" + prefix + AVRO_FILE_NAME));
-            clientDataFileWriter.append(client);
+            for (int i = 0; i < fileCount; i++) {
+                clientDataFileWriter.create(client.getSchema(), new File(Paths.get("").toAbsolutePath().normalize().toString() + AVRO_FILE_PROJECT_PATH + name + i + AVRO_FILE_EXT));
+                for (int j = 0; j < clientsCount; j++) {
+                    client = createRandomClient();
+                    clientDataFileWriter.append(client);
+                }
+                clientDataFileWriter.close();
+            }
         } catch (IOException e) {
             LOG.error("Exception occurs during avro file generation", e);
         }
@@ -42,6 +49,6 @@ public class AvroFileGenerator {
 
     public static void main(String[] args) {
         AvroFileGenerator ag = new AvroFileGenerator();
-        ag.generate("", 1);
+        ag.generate("main", 2, 2);
     }
 }

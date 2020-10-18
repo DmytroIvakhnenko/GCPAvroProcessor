@@ -8,9 +8,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
 @RestController
 public class ClientController {
     private final AvroFileGeneratorService avroFileGeneratorService;
@@ -19,21 +16,14 @@ public class ClientController {
         this.avroFileGeneratorService = avroFileGeneratorService;
     }
 
-    @RequestMapping("/test")
+    @RequestMapping("/")
     public String test() {
-        StringBuilder message = new StringBuilder("Google Cloud Build test!");
-        try {
-            InetAddress ip = InetAddress.getLocalHost();
-            message.append(" From host: ").append(ip);
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        }
-        return message.toString();
+        return "Welcome to GSC AVRO processor start page";
     }
 
     @GetMapping("/generate")
-    public ResponseEntity<Void> generate(@RequestParam(required = false, defaultValue = "test") String prefix, @RequestParam(required = false, defaultValue = "1") int count) {
-        avroFileGeneratorService.generate(prefix, count);
+    public ResponseEntity<Void> generate(@RequestParam(required = false, defaultValue = "test") String name, @RequestParam(required = false, defaultValue = "1") int fileCount, @RequestParam(required = false, defaultValue = "1") int clientsCount) {
+        avroFileGeneratorService.generate(name, fileCount, clientsCount);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 

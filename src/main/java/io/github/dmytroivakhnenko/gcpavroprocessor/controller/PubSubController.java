@@ -3,8 +3,8 @@ package io.github.dmytroivakhnenko.gcpavroprocessor.controller;
 
 import com.google.cloud.bigquery.Job;
 import com.google.cloud.storage.BlobInfo;
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
 import io.github.dmytroivakhnenko.gcpavroprocessor.util.PubSubEvent;
 import org.slf4j.Logger;
@@ -12,15 +12,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Base64;
 import java.util.Optional;
 
-// PubsubController consumes a Pub/Sub message.
+// PubsubController consumes a Pub/Sub message (JSON format).
 @RestController
 public class PubSubController {
     private static final Logger LOG = LoggerFactory.getLogger(PubSubController.class);
@@ -32,7 +31,7 @@ public class PubSubController {
         this.gcsFileProcessorService = gcsFileProcessorService;
     }
 
-    @RequestMapping(value = "/pubsub", method = RequestMethod.POST)
+    @PostMapping("/pubsub")
     public ResponseEntity receiveMessage(@RequestBody PubSubEvent event) {
         // Get PubSub message from request body.
         var payload = Optional.ofNullable(event.getMessage());
@@ -47,10 +46,14 @@ public class PubSubController {
         JsonObject data;
         try {
             var decodedMessage = new String(Base64.getDecoder().decode(payloadData));
-            data = new JsonParser().parse(decodedMessage).getAsJsonObject();
+            LOG.info("decodedMessage: " + decodedMessage);
+            Gson gson = new Gson();
+            data = gson.fromJson(decodedMessage, JsonObject.class);
+            LOG.info(data.getAsString());
+            //data = new JsonParser().parse(decodedMessage).getAsJsonObject();
         } catch (Exception e) {
             var msg = "Error: Invalid Pub/Sub message: data property is not valid base64 encoded JSON";
-            LOG.error(msg);
+            LOG.error(msg, e);
             return new ResponseEntity(msg, HttpStatus.BAD_REQUEST);
         }
 
@@ -62,6 +65,18 @@ public class PubSubController {
             LOG.error(msg);
             return new ResponseEntity(msg, HttpStatus.BAD_REQUEST);
         }
+
+        //avro validation
+       /* var client = new Client();
+        try {
+            DatumReader<Client> datumReader = new GenericDatumReader<>(client.getSchema());
+            Decoder decoder = DecoderFactory.get().jsonDecoder(client.getSchema(), data.getAsString());
+            datumReader.read(null, decoder);
+        } catch (IOException e) {
+            var msg = "Avro file validation failed";
+            LOG.error(msg, e);
+            return new ResponseEntity(msg, HttpStatus.BAD_REQUEST);
+        }*/
 
         LOG.info("Name = " + data.get("name") + " Bucket = " + data.get("bucket"));
 

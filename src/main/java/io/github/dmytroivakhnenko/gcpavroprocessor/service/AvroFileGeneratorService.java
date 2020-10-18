@@ -1,5 +1,5 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.service;
 
 public interface AvroFileGeneratorService {
-    void generate(String prefix, int count);
+    void generate(String name, int fileCount, int clientsCount);
 }
