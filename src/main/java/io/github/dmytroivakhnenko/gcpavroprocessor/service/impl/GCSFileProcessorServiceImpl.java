@@ -2,20 +2,16 @@ package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 
 
 import com.google.cloud.bigquery.*;
-import com.google.cloud.storage.*;
-import example.gcp.Client;
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
 import io.github.dmytroivakhnenko.gcpavroprocessor.config.BigQueryIntegrationConfig;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.io.Decoder;
-import org.apache.avro.io.DecoderFactory;
-import org.apache.avro.specific.SpecificDatumReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.concurrent.ListenableFuture;
-
-import java.io.IOException;
 
 @Service
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
@@ -30,6 +26,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         this.bigQueryFileGateway = bigQueryFileGateway;
     }
 
+/*
     @Override
     public void processFile(BlobInfo blobInfo) {
         var blob = storage.get(BlobId.of(blobInfo.getBucket(), blobInfo.getName()));
@@ -39,10 +36,8 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
                         + "channel adapter.");
         String gcsPath = String.format("gs://%s/%s", blobInfo.getBucket(), blobInfo.getName());
         loadAvroFromGcs(gcsPath);
-
-        //var client = deserialize(blob);
-        //LOG.info("Deserialized file: " + client.toString());
     }
+*/
 
     @Override
     public ListenableFuture<Job> processFileViaIntegration(BlobInfo blobInfo) {
@@ -53,20 +48,6 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
                         + "channel adapter.");
         return bigQueryFileGateway.writeToBigQueryTable(blob.getContent(), tableNameFull);
 
-    }
-
-    private Client deserialize(Blob blob) {
-        //DeSerializing the objects
-        DatumReader<Client> empDatumReader = new SpecificDatumReader<>(Client.class);
-
-        Decoder decoder = DecoderFactory.get().binaryDecoder(blob.getContent(), null);
-        Client client = null;
-        try {
-            client = empDatumReader.read(null, decoder);
-        } catch (IOException e) {
-            LOG.error("Exception occurs during avro file deserialization", e);
-        }
-        return client;
     }
 
     private void loadAvroFromGcs(String sourceUri) {
