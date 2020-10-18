@@ -49,7 +49,7 @@ public class PubSubController {
             LOG.info("decodedMessage: " + decodedMessage);
             Gson gson = new Gson();
             data = gson.fromJson(decodedMessage, JsonObject.class);
-            LOG.info(data.getAsString());
+            LOG.info(data.toString());
             //data = new JsonParser().parse(decodedMessage).getAsJsonObject();
         } catch (Exception e) {
             var msg = "Error: Invalid Pub/Sub message: data property is not valid base64 encoded JSON";
