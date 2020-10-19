@@ -10,11 +10,8 @@ import example.gcp.Client;
 import io.github.dmytroivakhnenko.gcpavroprocessor.config.BigQueryIntegrationConfig;
 import io.github.dmytroivakhnenko.gcpavroprocessor.exception.AvroFileValidationException;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
-import org.apache.avro.AvroTypeException;
-import org.apache.avro.Schema;
+import org.apache.avro.file.DataFileStream;
 import org.apache.avro.io.DatumReader;
-import org.apache.avro.io.Decoder;
-import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +20,8 @@ import org.springframework.util.concurrent.ListenableFuture;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
@@ -56,9 +54,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         var blob = storage.get(BlobId.of(blobInfo.getBucket(), blobInfo.getName()));
 
         LOG.info("File " + new String(blob.getContent()) + " received by the non-streaming inbound channel adapter");
-        if (!isValidatAvroFileAccordingToSchema(blob.getContent(), Client.SCHEMA$)) {
-            throw new AvroFileValidationException(String.format("File %s/%s is not following avro schema", blobInfo.getBucket(), blobInfo.getName()));
-        }
+        //TODO: filter
         return bigQueryFileGateway.writeToBigQueryTable(blob.getContent(), tableNameFull);
 
     }
@@ -90,15 +86,18 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         }
     }
 
-    boolean isValidatAvroFileAccordingToSchema(byte[] avroFileContent, Schema schema) {
-        try (InputStream input = new ByteArrayInputStream(avroFileContent)) {
-            DatumReader<Client> reader = new SpecificDatumReader<>(schema);
-            Decoder decoder = DecoderFactory.get().binaryDecoder(input, null);
-            reader.read(null, decoder);
-        } catch (AvroTypeException | IOException e) {
-            LOG.error("Exception occurs during avro file validation", e);
-            return false;
+    public List<Client> getClientsFromAvroFile(byte[] avroFileContent, BlobInfo blobInfo) {
+        var clients = new ArrayList<Client>();
+        DatumReader<Client> reader = new SpecificDatumReader<>(Client.class);
+        try (DataFileStream<Client> dataFileReader = new DataFileStream<>(new ByteArrayInputStream(avroFileContent), reader)) {
+            while (dataFileReader.hasNext()) {
+                clients.add(dataFileReader.next());
+            }
+        } catch (IOException e) {
+            var msg = String.format("Exception occurs during getting clients from avro file: %s/%s ", blobInfo.getBucket(), blobInfo.getName());
+            LOG.error(String.format(msg, e));
+            throw new AvroFileValidationException(msg);
         }
-        return true;
+        return clients;
     }
 }

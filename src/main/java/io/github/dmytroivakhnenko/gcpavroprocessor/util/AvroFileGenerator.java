@@ -36,7 +36,7 @@ public class AvroFileGenerator {
     public static byte[] createByteArrayOfRandomClient() {
         var client = createRandomClient();
         byte[] avroFileContent = new byte[0];
-        DatumWriter<Client> writer = new SpecificDatumWriter<>(Client.SCHEMA$);
+        DatumWriter<Client> writer = new SpecificDatumWriter<>(Client.class);
         try (ByteArrayOutputStream stream = new ByteArrayOutputStream()) {
             Encoder byteEncoder = EncoderFactory.get().binaryEncoder(stream, null);
             writer.write(client, byteEncoder);
@@ -50,10 +50,10 @@ public class AvroFileGenerator {
 
     public void generateToTestFolder(final String name, final int fileCount, final int clientsCount) {
         var client = new Client();
-        DatumWriter<Client> clientDatumWriter = new SpecificDatumWriter<>(Client.SCHEMA$);
+        DatumWriter<Client> clientDatumWriter = new SpecificDatumWriter<>(Client.class);
         try (DataFileWriter<Client> clientDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
             for (int i = 0; i < fileCount; i++) {
-                clientDataFileWriter.create(Client.SCHEMA$, new File(Paths.get("").toAbsolutePath().normalize().toString() + AVRO_FILE_PROJECT_PATH + name + i + AVRO_FILE_EXT));
+                clientDataFileWriter.create(client.getSchema(), new File(Paths.get("").toAbsolutePath().normalize().toString() + AVRO_FILE_PROJECT_PATH + name + i + AVRO_FILE_EXT));
                 for (int j = 0; j < clientsCount; j++) {
                     client = createRandomClient();
                     clientDataFileWriter.append(client);
@@ -71,6 +71,6 @@ public class AvroFileGenerator {
 
     public static void main(String[] args) {
         AvroFileGenerator ag = new AvroFileGenerator();
-        ag.generateToTestFolder("main", 2, 2);
+        ag.generateToTestFolder("test_5clientss", 1, 5);
     }
 }
