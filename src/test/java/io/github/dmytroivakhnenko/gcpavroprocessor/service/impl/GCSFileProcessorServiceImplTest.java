@@ -1,6 +1,5 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 
-
 import com.google.cloud.storage.BlobInfo;
 import io.github.dmytroivakhnenko.gcpavroprocessor.config.BigQueryIntegrationConfig;
 import io.github.dmytroivakhnenko.gcpavroprocessor.exception.AvroFileValidationException;
@@ -42,5 +41,6 @@ public class GCSFileProcessorServiceImplTest {
     public void whenFileIsFollowingSchema() throws IOException {
         File file = ResourceUtils.getFile("classpath:avro/test_5clients.avro");
         assertEquals(gcsFileProcessorService.getClientsFromAvroFile(Files.readAllBytes(file.toPath()), testBlobInfo).size(), 5);
+        //assertEquals(gcsFileProcessorService.getClientsFromAvroFile(AvroFileGenerator.createByteArrayOfRandomClient(), testBlobInfo).size(), 5);
     }
 }

@@ -1,0 +1,9 @@
+{
+ "namespace": "example.gcp",
+ "type": "record",
+ "name": "ClientMandatory",
+         "fields": [
+ {"name": "id", "type": "long"},
+ {"name": "name", "type": "string"}
+ ]
+}
