@@ -1,6 +1,5 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.controller;
 
-
 import com.google.cloud.bigquery.Job;
 import com.google.cloud.storage.BlobInfo;
 import com.google.gson.Gson;
@@ -9,6 +8,7 @@ import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorServi
 import io.github.dmytroivakhnenko.gcpavroprocessor.util.PubSubEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.concurrent.ListenableFuture;
@@ -19,10 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Base64;
 import java.util.Optional;
 
-// PubsubController consumes a Pub/Sub message (JSON format).
+/**
+ * PubsubController consumes a Pub/Sub message (JSON format)
+ */
 @RestController
 public class PubSubController {
     private static final Logger LOG = LoggerFactory.getLogger(PubSubController.class);
+
+    @Value("${avro.file.ext}")
+    private String avroFileExt;
 
     private GCSFileProcessorService gcsFileProcessorService;
 
@@ -66,17 +71,10 @@ public class PubSubController {
             return new ResponseEntity(msg, HttpStatus.BAD_REQUEST);
         }
 
-        //avro validation
-       /* var client = new Client();
-        try {
-            DatumReader<Client> datumReader = new GenericDatumReader<>(client.getSchema());
-            Decoder decoder = DecoderFactory.get().jsonDecoder(client.getSchema(), data.getAsString());
-            datumReader.read(null, decoder);
-        } catch (IOException e) {
-            var msg = "Avro file validation failed";
-            LOG.error(msg, e);
-            return new ResponseEntity(msg, HttpStatus.BAD_REQUEST);
-        }*/
+        if (!fileName.get().getAsString().endsWith(avroFileExt)) {
+            LOG.info("File " + fileName.get().getAsString() + " was skipped from processing due to the wrong extension");
+            return new ResponseEntity(HttpStatus.OK);
+        }
 
         LOG.info("Name = " + data.get("name") + " Bucket = " + data.get("bucket"));
 

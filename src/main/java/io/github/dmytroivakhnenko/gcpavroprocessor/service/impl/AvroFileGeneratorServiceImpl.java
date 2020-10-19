@@ -9,6 +9,6 @@ public class AvroFileGeneratorServiceImpl implements AvroFileGeneratorService {
     @Override
     public void generate(final String name, final int fileCount, final int clientsCount) {
         AvroFileGenerator avroFileGenerator = new AvroFileGenerator();
-        avroFileGenerator.generate(name, fileCount, clientsCount);
+        avroFileGenerator.generateToTestFolder(name, fileCount, clientsCount);
     }
 }
