@@ -1,5 +1,6 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 
+import com.google.cloud.ReadChannel;
 import com.google.cloud.WriteChannel;
 import com.google.cloud.bigquery.Job;
 import com.google.cloud.storage.BlobId;
@@ -22,9 +23,11 @@ import org.springframework.util.concurrent.ListenableFuture;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
+import java.io.OutputStream;
+import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
@@ -60,7 +63,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         var blob = storage.get(BlobId.of(blobInfo.getBucket(), blobInfo.getName()));
 
         LOG.info("File " + new String(blob.getContent()) + " received by the non-streaming inbound channel adapter");
-        //TODO: filter
+        getClientsStreamFromAvroFile(blobInfo);
         return bigQueryFileGateway.writeToBigQueryTable(blob.getContent(), tableNameFull);
 
     }
@@ -107,59 +110,34 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         return clients;
     }
 
-    public InputStream getClientsStreamFromAvroFile(byte[] avroFileContent, BlobInfo blobInfo) {
-        //var clients = new ArrayList<Client>();
+    public void getClientsStreamFromAvroFile(BlobInfo blobInfo) {
+        var avroFileInputStream = readFileFromStorage(blobInfo);
+        var clients = new ArrayList<Client>();
 
         DatumReader<Client> reader = new SpecificDatumReader<>(Client.class);
-        try (DataFileStream<Client> dataFileReader = new DataFileStream<>(new ByteArrayInputStream(avroFileContent), reader)) {
+        try (DataFileStream<Client> dataFileReader = new DataFileStream<>(avroFileInputStream, reader)) {
             while (dataFileReader.hasNext()) {
-
-                //clients.add(dataFileReader.next());
+                clients.add(dataFileReader.next());
             }
         } catch (IOException e) {
             var msg = String.format("Exception occurs during getting clients from avro file: %s/%s ", blobInfo.getBucket(), blobInfo.getName());
             LOG.error(String.format(msg, e));
             throw new AvroFileValidationException(msg);
         }
-        return null;
-    }
-
-    public void saveToStorage(InputStream inputStream, BlobInfo blobInfo) {
-        if (false/*Files.size(uploadFrom) > 1_000_000*/) {
-            writeLargeFileToStorage(inputStream, blobInfo);
-        } else {
-            byte[] bytes = new byte[0];
-            try {
-                bytes = inputStream.readAllBytes();
-            } catch (IOException e) {
-                LOG.error(String.format("Exception occurred during file: %s/%s writing to storage", blobInfo.getBucket(), blobInfo.getName()), e);
-            }
-            // create the blob in one request.
-            storage.create(blobInfo, bytes);
-        }
-        LOG.info("Blob was created: %s/%s", blobInfo.getBucket(), blobInfo.getName());
-    }
-
-    /**
-     * When content is not available or large (1MB or more) it is recommended to write it in chunks via the blob's channel writer.
-     *
-     * @param inputStream
-     * @param blobInfo
-     */
-    public void writeLargeFileToStorage(InputStream inputStream, BlobInfo blobInfo) {
-        try (WriteChannel writer = storage.writer(blobInfo)) {
-            byte[] buffer = new byte[1024];
-            int limit;
-            while ((limit = inputStream.read(buffer)) >= 0) {
-                writer.write(ByteBuffer.wrap(buffer, 0, limit));
-            }
-        } catch (IOException e) {
-            LOG.error(String.format("Exception occurred during file: %s/%s writing to storage", blobInfo.getBucket(), blobInfo.getName()), e);
-        }
+        LOG.info("Clients: " + clients.stream().map(Client::toString).collect(Collectors.joining(",")));
 
     }
 
-    public InputStream readLargeFileFromStorage(BlobInfo blobInfo) {
-        return null;
+    public OutputStream saveToStorage(InputStream inputStream, BlobInfo blobInfo) {
+        var blob = storage.get(blobInfo.getBlobId());
+        WriteChannel writer = blob.writer();
+        return Channels.newOutputStream(writer);
     }
+
+    public InputStream readFileFromStorage(BlobInfo blobInfo) {
+        var blob = storage.get(blobInfo.getBlobId());
+        ReadChannel reader = blob.reader();
+        return Channels.newInputStream(reader);
+    }
+
 }
