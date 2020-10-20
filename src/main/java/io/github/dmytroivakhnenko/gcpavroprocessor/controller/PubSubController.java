@@ -1,7 +1,5 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.controller;
 
-import com.google.cloud.RetryOption;
-import com.google.cloud.bigquery.Job;
 import com.google.cloud.storage.BlobInfo;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -15,14 +13,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import org.threeten.bp.Duration;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 /**
@@ -31,12 +27,11 @@ import java.util.stream.Collectors;
 @RestController
 public class PubSubController {
     private static final Logger LOG = LoggerFactory.getLogger(PubSubController.class);
-    private static final ExecutorService executorService = Executors.newCachedThreadPool();
 
     @Value("${avro.file.ext}")
     private String avroFileExt;
 
-    private GCSFileProcessorService gcsFileProcessorService;
+    private final GCSFileProcessorService gcsFileProcessorService;
 
     public PubSubController(
             GCSFileProcessorService gcsFileProcessorService) {
@@ -48,9 +43,7 @@ public class PubSubController {
         // Get PubSub message from request body.
         var payload = Optional.ofNullable(event.getMessage());
         if (payload.isEmpty()) {
-            var msg = "Bad Request: invalid Pub/Sub message format";
-            LOG.error(msg);
-            return new ResponseEntity(msg, HttpStatus.BAD_REQUEST);
+            return logAndReturnBadRequest("Invalid Pub/Sub message format");
         }
 
         // Decode the Pub/Sub message.
@@ -58,40 +51,37 @@ public class PubSubController {
         JsonObject data;
         try {
             var decodedMessage = new String(Base64.getDecoder().decode(payloadData));
-            LOG.info("decodedMessage: " + decodedMessage);
+            LOG.info("PubSub message received {}", decodedMessage);
             Gson gson = new Gson();
             data = gson.fromJson(decodedMessage, JsonObject.class);
-            LOG.info(data.toString());
         } catch (Exception e) {
-            var msg = "Error: Invalid Pub/Sub message: data property is not valid base64 encoded JSON";
-            LOG.error(msg, e);
-            return new ResponseEntity(msg, HttpStatus.BAD_REQUEST);
+            return logAndReturnBadRequest("Invalid Pub/Sub message: data property is not valid base64 encoded JSON", e);
         }
 
-        var fileName = Optional.ofNullable(data.get("name"));
-        var bucketName = Optional.ofNullable(data.get("bucket"));
-        // Validate the message is a Cloud Storage event.
-        if (fileName.isEmpty() || bucketName.isEmpty()) {
-            var msg = "Error: Invalid Cloud Storage notification: expected name and bucket properties";
-            LOG.error(msg);
-            return new ResponseEntity(msg, HttpStatus.BAD_REQUEST);
+        var fileName = data.get("name");
+        var bucketName = data.get("bucket");
+        // Validate if the message is a Cloud Storage event.
+        if (Objects.isNull(fileName) || Objects.isNull(bucketName)) {
+            return logAndReturnBadRequest("Invalid Cloud Storage notification: expected name and bucket properties");
         }
 
-        if (!fileName.get().getAsString().endsWith(avroFileExt)) {
-            LOG.info("File " + fileName.get().getAsString() + " was skipped from processing due to the wrong extension");
+        // Validate if file has avro extension
+        if (!fileName.getAsString().endsWith(avroFileExt)) {
+            LOG.info("File {} was skipped from processing due to the wrong extension", fileName.getAsString());
             return new ResponseEntity(HttpStatus.OK);
         }
 
-        LOG.info("Name = " + data.get("name") + " Bucket = " + data.get("bucket"));
-
-        var blobInfo = BlobInfo.newBuilder(bucketName.get().getAsString(), fileName.get().getAsString()).build();
-
+        var blobInfo = BlobInfo.newBuilder(bucketName.getAsString(), fileName.getAsString()).build();
         return getResponse(gcsFileProcessorService.processFileToBigQuery(blobInfo));
     }
 
-    private ResponseEntity getResponse(List<Job> loadJobs) {
-        List<CompletableFuture<Boolean>> completableFutures = loadJobs.stream().map(this::waitForJob).collect(Collectors.toList());
-
+    /**
+     * Method waits and checks results of completion of all completable futures
+     *
+     * @param completableFutures - list of CompletableFutures that contain boolean result of the BigQuery uploading jobs
+     * @return HttpStatus.OK if all jobs were successfully finished, HttpStatus.BAD_REQUEST otherwise
+     */
+    private ResponseEntity getResponse(List<CompletableFuture<Boolean>> completableFutures) {
         CompletableFuture<Void> allFutures = CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new));
 
         CompletableFuture<Boolean> allCompletableFuture = allFutures
@@ -108,23 +98,13 @@ public class PubSubController {
         }
     }
 
-    private CompletableFuture<Boolean> waitForJob(Job job) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                LOG.info("Waiting for job {} ...", job.getJobId());
-                job.waitFor(RetryOption.totalTimeout(Duration.ofMinutes(10)));
-                if (job.isDone()) {
-                    LOG.info("Job {} was successfully done", job.getJobId());
-                    return true;
-                } else {
-                    LOG.error("Job {} was finished with error {}", job.getJobId(), job.getStatus().getError());
-                    return false;
-                }
-            } catch (InterruptedException e) {
-                LOG.error("Exception occurred during job {} execution", job.getJobId(), e);
-                return false;
-            }
-        }, executorService);
+    private ResponseEntity logAndReturnBadRequest(String errorMsg) {
+        LOG.error(errorMsg);
+        return new ResponseEntity(errorMsg, HttpStatus.BAD_REQUEST);
+    }
 
+    private ResponseEntity logAndReturnBadRequest(String errorMsg, Exception e) {
+        LOG.error(errorMsg, e);
+        return new ResponseEntity(errorMsg, HttpStatus.BAD_REQUEST);
     }
 }

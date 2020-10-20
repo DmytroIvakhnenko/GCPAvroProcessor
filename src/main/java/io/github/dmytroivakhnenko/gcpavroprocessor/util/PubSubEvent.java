@@ -1,7 +1,10 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.util;
 
-// Body.Message is the payload of a Pub/Sub event. Please refer to the docs for
-// additional information regarding Pub/Sub events.
+/**
+ * Body.Message is the payload of a Pub/Sub event. Please refer to the docs for
+ * additional information regarding Pub/Sub events.
+ */
+
 public class PubSubEvent {
 
     private Message message;
