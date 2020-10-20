@@ -1,6 +1,5 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 
-import com.google.cloud.ReadChannel;
 import com.google.cloud.WriteChannel;
 import com.google.cloud.bigquery.*;
 import com.google.cloud.storage.BlobId;
@@ -45,6 +44,9 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
 
     @Value("${bigquery.tableName.mandatory}")
     private String tableNameMandatory;
+
+    @Value("${gcs.tmp.bucket.name}")
+    private String tmpBucketName;
 
     public GCSFileProcessorServiceImpl(BigQueryIntegrationConfig.BigQueryFileGateway bigQueryFileGateway) {
         this.bigQueryFileGateway = bigQueryFileGateway;
@@ -106,7 +108,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
 
     public void getClientsStreamFromAvroFile(BlobInfo blobInfo) {
         var tmpName = UUID.randomUUID() + "tmp_file.avro";
-        var tmpBlob = BlobInfo.newBuilder(blobInfo.getBucket(), tmpName).setContentType("application/avro").build();
+        var tmpBlob = BlobInfo.newBuilder(tmpBucketName, tmpName).setContentType("application/avro").build();
         var outputStream = getStorageOutputStream(tmpBlob);
         var avroFileInputStream = readFileFromStorage(blobInfo);
         var count = 0;
@@ -138,7 +140,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     }
 
     public OutputStream getStorageOutputStream(BlobInfo blobInfo) {
-        GoogleStorageResource storageResource = new GoogleStorageResource(storage, constructGCSUri(blobInfo));
+        var storageResource = new GoogleStorageResource(storage, constructGCSUri(blobInfo));
         var blob = storageResource.createBlob();
         WriteChannel writer = blob.writer();
         writer.setChunkSize(64 * 1024);
@@ -147,7 +149,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
 
     public InputStream readFileFromStorage(BlobInfo blobInfo) {
         var blob = storage.get(blobInfo.getBlobId());
-        ReadChannel reader = blob.reader();
+        var reader = blob.reader();
         reader.setChunkSize(64 * 1024);
         return Channels.newInputStream(reader);
     }
