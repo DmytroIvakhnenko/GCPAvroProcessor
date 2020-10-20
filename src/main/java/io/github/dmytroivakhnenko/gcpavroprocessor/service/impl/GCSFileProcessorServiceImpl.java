@@ -27,7 +27,6 @@ import java.io.OutputStream;
 import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
@@ -113,19 +112,21 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     public void getClientsStreamFromAvroFile(BlobInfo blobInfo) {
         var avroFileInputStream = readFileFromStorage(blobInfo);
         var clients = new ArrayList<Client>();
-
+        var count = 0;
         DatumReader<Client> reader = new SpecificDatumReader<>(Client.class);
         try (DataFileStream<Client> dataFileReader = new DataFileStream<>(avroFileInputStream, reader)) {
             while (dataFileReader.hasNext()) {
-                clients.add(dataFileReader.next());
+                //clients.add(dataFileReader.next());
+                dataFileReader.next();
+                count++;
             }
         } catch (IOException e) {
             var msg = String.format("Exception occurs during getting clients from avro file: %s/%s ", blobInfo.getBucket(), blobInfo.getName());
             LOG.error(String.format(msg, e));
             throw new AvroFileValidationException(msg);
         }
-        LOG.info("Clients: " + clients.stream().map(Client::toString).collect(Collectors.joining(",")));
-
+        LOG.info("Clients count: " + count);
+        //LOG.info("Clients: " + clients.stream().map(Client::toString).collect(Collectors.joining(",")));
     }
 
     public OutputStream saveToStorage(InputStream inputStream, BlobInfo blobInfo) {

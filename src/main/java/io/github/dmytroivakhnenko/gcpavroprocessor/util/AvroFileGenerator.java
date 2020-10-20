@@ -71,6 +71,6 @@ public class AvroFileGenerator {
 
     public static void main(String[] args) {
         AvroFileGenerator ag = new AvroFileGenerator();
-        ag.generateToTestFolder("test_5clientss", 1, 5);
+        ag.generateToTestFolder("test_epic_clients", 1, 50_000_000);
     }
 }
