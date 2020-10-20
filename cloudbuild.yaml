@@ -25,6 +25,7 @@ steps:
       - 'europe-west1'
       - '--platform'
       - 'managed'
+      - '--allow-unauthenticated'
 
 images:
   - 'gcr.io/$PROJECT_ID/gcpavroprocessor:$COMMIT_SHA'
