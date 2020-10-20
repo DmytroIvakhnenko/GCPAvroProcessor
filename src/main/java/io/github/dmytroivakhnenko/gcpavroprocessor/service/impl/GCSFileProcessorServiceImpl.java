@@ -8,12 +8,16 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import example.gcp.Client;
+import example.gcp.ClientMandatory;
 import io.github.dmytroivakhnenko.gcpavroprocessor.config.BigQueryIntegrationConfig;
 import io.github.dmytroivakhnenko.gcpavroprocessor.exception.AvroFileValidationException;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
 import org.apache.avro.file.DataFileStream;
+import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.io.DatumReader;
+import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumReader;
+import org.apache.avro.specific.SpecificDatumWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +31,7 @@ import java.io.OutputStream;
 import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
@@ -110,14 +115,21 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     }
 
     public void getClientsStreamFromAvroFile(BlobInfo blobInfo) {
+        var tmpName = UUID.randomUUID() + "tmp_file.avro";
+        var tmpBlob = BlobInfo.newBuilder(blobInfo.getBucket(), tmpName).setContentType("application/avro").build();
+        var outputStream = getStorageOutputStream(tmpBlob);
         var avroFileInputStream = readFileFromStorage(blobInfo);
-        var clients = new ArrayList<Client>();
         var count = 0;
+
         DatumReader<Client> reader = new SpecificDatumReader<>(Client.class);
-        try (DataFileStream<Client> dataFileReader = new DataFileStream<>(avroFileInputStream, reader)) {
-            while (dataFileReader.hasNext()) {
-                //clients.add(dataFileReader.next());
-                dataFileReader.next();
+        DatumWriter<ClientMandatory> clientDatumWriter = new SpecificDatumWriter<>(ClientMandatory.class);
+
+        try (DataFileStream<Client> clientDataFileReader = new DataFileStream<>(avroFileInputStream, reader);
+             DataFileWriter<ClientMandatory> clientMandatoryDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
+            clientMandatoryDataFileWriter.create(ClientMandatory.getClassSchema(), outputStream);
+            while (clientDataFileReader.hasNext()) {
+                var client = clientDataFileReader.next();
+                clientMandatoryDataFileWriter.append(createMandatoryClient(client));
                 count++;
             }
         } catch (IOException e) {
@@ -126,18 +138,26 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
             throw new AvroFileValidationException(msg);
         }
         LOG.info("Clients count: " + count);
-        //LOG.info("Clients: " + clients.stream().map(Client::toString).collect(Collectors.joining(",")));
     }
 
-    public OutputStream saveToStorage(InputStream inputStream, BlobInfo blobInfo) {
+    private ClientMandatory createMandatoryClient(Client client) {
+        var clientMandatory = new ClientMandatory();
+        clientMandatory.setId(client.getId());
+        clientMandatory.setName(client.getName());
+        return clientMandatory;
+    }
+
+    public OutputStream getStorageOutputStream(BlobInfo blobInfo) {
         var blob = storage.get(blobInfo.getBlobId());
         WriteChannel writer = blob.writer();
+        writer.setChunkSize(64 * 1024);
         return Channels.newOutputStream(writer);
     }
 
     public InputStream readFileFromStorage(BlobInfo blobInfo) {
         var blob = storage.get(blobInfo.getBlobId());
         ReadChannel reader = blob.reader();
+        reader.setChunkSize(64 * 1024);
         return Channels.newInputStream(reader);
     }
 
