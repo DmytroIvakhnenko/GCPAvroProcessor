@@ -21,6 +21,7 @@ import org.apache.avro.specific.SpecificDatumWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.gcp.storage.GoogleStorageResource;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
@@ -69,9 +70,8 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         LOG.info(String.format("File %s/%s received", blobInfo.getBucket(), blobInfo.getName()));
         getClientsStreamFromAvroFile(blobInfo);
         //return bigQueryFileGateway.writeToBigQueryTable(blob.getContent(), tableNameFull);
-        String gcsPath = String.format("gs://%s/%s", blobInfo.getBucket(), blobInfo.getName());
 
-        return loadAvroFromGcs(gcsPath);
+        return loadAvroFromGcs(constructGCSUri(blobInfo));
     }
 
     private CompletableFuture<Job> loadAvroFromGcs(String sourceUri) {
@@ -138,7 +138,8 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     }
 
     public OutputStream getStorageOutputStream(BlobInfo blobInfo) {
-        var blob = storage.get(blobInfo.getBlobId());
+        GoogleStorageResource storageResource = new GoogleStorageResource(storage, constructGCSUri(blobInfo));
+        var blob = storageResource.createBlob();
         WriteChannel writer = blob.writer();
         writer.setChunkSize(64 * 1024);
         return Channels.newOutputStream(writer);
@@ -151,4 +152,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         return Channels.newInputStream(reader);
     }
 
+    private String constructGCSUri(BlobInfo blobInfo) {
+        return String.format("gs://%s/%s", blobInfo.getBucket(), blobInfo.getName());
+    }
 }
