@@ -8,9 +8,9 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import example.gcp.Client;
 import example.gcp.ClientMandatory;
-import io.github.dmytroivakhnenko.gcpavroprocessor.config.BigQueryIntegrationConfig;
 import io.github.dmytroivakhnenko.gcpavroprocessor.exception.AvroFileValidationException;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
+import io.github.dmytroivakhnenko.gcpavroprocessor.util.LoadInfo;
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.io.DatumReader;
@@ -23,21 +23,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gcp.storage.GoogleStorageResource;
 import org.springframework.stereotype.Service;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.channels.Channels;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     private static final Logger LOG = LoggerFactory.getLogger(GCSFileProcessorServiceImpl.class);
     private static final Storage storage = StorageOptions.getDefaultInstance().getService();
-    private final BigQueryIntegrationConfig.BigQueryFileGateway bigQueryFileGateway;
+    private static final BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
 
     @Value("${bigquery.tableName.full}")
     private String tableNameFull;
@@ -48,65 +47,30 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     @Value("${gcs.tmp.bucket.name}")
     private String tmpBucketName;
 
-    public GCSFileProcessorServiceImpl(BigQueryIntegrationConfig.BigQueryFileGateway bigQueryFileGateway) {
-        this.bigQueryFileGateway = bigQueryFileGateway;
-    }
-
-/*
-    @Override
-    public void processFile(BlobInfo blobInfo) {
-        var blob = storage.get(BlobId.of(blobInfo.getBucket(), blobInfo.getName()));
-
-        LOG.info(
-                "File " + new String(blob.getContent()) + " received by the non-streaming inbound "
-                        + "channel adapter.");
-        String gcsPath = String.format("gs://%s/%s", blobInfo.getBucket(), blobInfo.getName());
-        loadAvroFromGcs(gcsPath);
-    }
-*/
+    @Value("${spring.cloud.gcp.bigquery.datasetName}")
+    private String datasetName;
 
     @Override
-    public CompletableFuture<Job> processFileViaIntegration(BlobInfo blobInfo) {
+    public List<Job> processFileToBigQuery(BlobInfo blobInfo) {
         var blob = storage.get(BlobId.of(blobInfo.getBucket(), blobInfo.getName()));
 
         LOG.info(String.format("File %s/%s received", blobInfo.getBucket(), blobInfo.getName()));
-        getClientsStreamFromAvroFile(blobInfo);
+        var mandatoryClientBlobInfo = validateAvroFileAndGetMandatoryClientBlobInfo(blobInfo);
         //return bigQueryFileGateway.writeToBigQueryTable(blob.getContent(), tableNameFull);
-
-        return loadAvroFromGcs(constructGCSUri(blobInfo));
+        return Arrays.asList(LoadInfo.of(blobInfo, tableNameFull), LoadInfo.of(mandatoryClientBlobInfo, tableNameMandatory)).parallelStream().map(this::loadAvroFileToBigQuery).collect(Collectors.toList());
     }
 
-    private CompletableFuture<Job> loadAvroFromGcs(String sourceUri) {
-        var datasetName = "clients_dataset";
-        var tableName = "client_full";
-        // Initialize client that will be used to send requests. This client only needs to be created
-        // once, and can be reused for multiple requests.
-        BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
-
-        TableId tableId = TableId.of(datasetName, tableName);
-        LoadJobConfiguration loadConfig = LoadJobConfiguration.of(tableId, sourceUri, FormatOptions.avro());
-
+    private Job loadAvroFileToBigQuery(LoadInfo loadInfo) {
+        var blobInfo = loadInfo.getBlobInfo();
+        TableId tableId = TableId.of(datasetName, loadInfo.getTableName());
+        LoadJobConfiguration loadConfig = LoadJobConfiguration.of(tableId, constructGCSUri(blobInfo), FormatOptions.avro());
         // Load data from a GCS Avro file into the table
-        CompletableFuture<Job> job = CompletableFuture.supplyAsync(() -> bigquery.create(JobInfo.of(loadConfig)));
+        var job = bigquery.create(JobInfo.of(loadConfig));
+        LOG.info("Job: {} processing file {}/{} was started", job.getJobId(), blobInfo.getBucket(), blobInfo.getName());
         return job;
     }
 
-    public List<Client> getClientsFromAvroFile(byte[] avroFileContent, BlobInfo blobInfo) {
-        var clients = new ArrayList<Client>();
-        DatumReader<Client> reader = new SpecificDatumReader<>(Client.class);
-        try (DataFileStream<Client> dataFileReader = new DataFileStream<>(new ByteArrayInputStream(avroFileContent), reader)) {
-            while (dataFileReader.hasNext()) {
-                clients.add(dataFileReader.next());
-            }
-        } catch (IOException e) {
-            var msg = String.format("Exception occurs during getting clients from avro file: %s/%s ", blobInfo.getBucket(), blobInfo.getName());
-            LOG.error(String.format(msg, e));
-            throw new AvroFileValidationException(msg);
-        }
-        return clients;
-    }
-
-    public void getClientsStreamFromAvroFile(BlobInfo blobInfo) {
+    public BlobInfo validateAvroFileAndGetMandatoryClientBlobInfo(BlobInfo blobInfo) {
         var tmpName = UUID.randomUUID() + "tmp_file.avro";
         var tmpBlob = BlobInfo.newBuilder(tmpBucketName, tmpName).setContentType("application/avro").build();
         var outputStream = getStorageOutputStream(tmpBlob);
@@ -130,6 +94,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
             throw new AvroFileValidationException(msg);
         }
         LOG.info("Clients count: " + count);
+        return tmpBlob;
     }
 
     private ClientMandatory createMandatoryClient(Client client) {

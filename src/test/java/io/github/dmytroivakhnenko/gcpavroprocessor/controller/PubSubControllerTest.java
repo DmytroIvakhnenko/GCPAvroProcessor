@@ -7,6 +7,7 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.gson.GsonBuilder;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
 import io.github.dmytroivakhnenko.gcpavroprocessor.util.PubSubEvent;
+import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -53,7 +54,7 @@ public class PubSubControllerTest {
                 .andExpect(status().isBadRequest());
 
         var blobInfoCaptor = ArgumentCaptor.forClass(BlobInfo.class);
-        verify(gcsFileProcessorService, times(0)).processFileViaIntegration(blobInfoCaptor.capture());
+        verify(gcsFileProcessorService, times(0)).processFileToBigQuery(blobInfoCaptor.capture());
     }
 
     @Test
@@ -69,7 +70,7 @@ public class PubSubControllerTest {
                 .andExpect(status().isBadRequest());
 
         var blobInfoCaptor = ArgumentCaptor.forClass(BlobInfo.class);
-        verify(gcsFileProcessorService, times(0)).processFileViaIntegration(blobInfoCaptor.capture());
+        verify(gcsFileProcessorService, times(0)).processFileToBigQuery(blobInfoCaptor.capture());
     }
 
     @Test
@@ -85,12 +86,12 @@ public class PubSubControllerTest {
                 .andExpect(status().isBadRequest());
 
         var blobInfoCaptor = ArgumentCaptor.forClass(BlobInfo.class);
-        verify(gcsFileProcessorService, times(0)).processFileViaIntegration(blobInfoCaptor.capture());
+        verify(gcsFileProcessorService, times(0)).processFileToBigQuery(blobInfoCaptor.capture());
     }
 
     @Test
     void whenEventMessageIsValidThenProcessFile() throws Exception {
-        when(gcsFileProcessorService.processFileViaIntegration(Mockito.any(BlobInfo.class))).thenReturn(completableFuture);
+        when(gcsFileProcessorService.processFileToBigQuery(Mockito.any(BlobInfo.class))).thenReturn(Lists.emptyList());
         when(completableFuture.get(Mockito.anyLong(), Mockito.any(TimeUnit.class))).thenReturn(job);
         when(job.waitFor(Mockito.any(RetryOption.class))).thenReturn(job);
         var event = new PubSubEvent();
@@ -107,7 +108,7 @@ public class PubSubControllerTest {
 
         var blobInfoCaptor = ArgumentCaptor.forClass(BlobInfo.class);
 
-        verify(gcsFileProcessorService, times(1)).processFileViaIntegration(blobInfoCaptor.capture());
+        verify(gcsFileProcessorService, times(1)).processFileToBigQuery(blobInfoCaptor.capture());
         assertThat(blobInfoCaptor.getValue().getBucket()).isEqualTo("mybucket");
         assertThat(blobInfoCaptor.getValue().getName()).isEqualTo("myname.avro");
     }
@@ -125,7 +126,7 @@ public class PubSubControllerTest {
                 .andExpect(status().isOk());
 
         var blobInfoCaptor = ArgumentCaptor.forClass(BlobInfo.class);
-        verify(gcsFileProcessorService, times(0)).processFileViaIntegration(blobInfoCaptor.capture());
+        verify(gcsFileProcessorService, times(0)).processFileToBigQuery(blobInfoCaptor.capture());
     }
 
     private String getEncodedJsonData(final String bucket, final String name) {

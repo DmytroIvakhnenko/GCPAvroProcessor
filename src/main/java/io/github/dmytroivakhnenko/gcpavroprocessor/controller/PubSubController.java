@@ -18,9 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.threeten.bp.Duration;
 
 import java.util.Base64;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 /**
  * PubsubController consumes a Pub/Sub message (JSON format)
@@ -28,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 @RestController
 public class PubSubController {
     private static final Logger LOG = LoggerFactory.getLogger(PubSubController.class);
+    private static final ExecutorService executorService = Executors.newCachedThreadPool();
 
     @Value("${avro.file.ext}")
     private String avroFileExt;
@@ -82,18 +86,45 @@ public class PubSubController {
 
         var blobInfo = BlobInfo.newBuilder(bucketName.get().getAsString(), fileName.get().getAsString()).build();
 
-        return getResponse(gcsFileProcessorService.processFileViaIntegration(blobInfo));
+        return getResponse(gcsFileProcessorService.processFileToBigQuery(blobInfo));
     }
 
-    private ResponseEntity getResponse(CompletableFuture<Job> loadJob) {
-        try {
-            Job job = loadJob.get(10, TimeUnit.MINUTES);
-            job.waitFor(RetryOption.totalTimeout(Duration.ofMinutes(10)));
+    private ResponseEntity getResponse(List<Job> loadJobs) {
+        List<CompletableFuture<Boolean>> completableFutures = loadJobs.stream().map(this::waitForJob).collect(Collectors.toList());
+
+        CompletableFuture<Void> allFutures = CompletableFuture.allOf(completableFutures.toArray(CompletableFuture[]::new));
+
+        CompletableFuture<Boolean> allCompletableFuture = allFutures
+                .thenApply(future -> {
+                    return completableFutures.stream()
+                            .map(completableFuture -> completableFuture.join())
+                            .collect(Collectors.toList());
+                }).thenApply(results -> results.stream().allMatch(Boolean.TRUE::equals));
+
+        if (allCompletableFuture.join()) {
             return new ResponseEntity(HttpStatus.OK);
-        } catch (Exception e) {
-            var msg = "Error during data load to BigQuery";
-            LOG.error(msg, e);
-            return new ResponseEntity(msg, HttpStatus.BAD_REQUEST);
+        } else {
+            return new ResponseEntity("Error(s) occurred during file processing", HttpStatus.BAD_REQUEST);
         }
+    }
+
+    private CompletableFuture<Boolean> waitForJob(Job job) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                LOG.info("Waiting for job {} ...", job.getJobId());
+                job.waitFor(RetryOption.totalTimeout(Duration.ofMinutes(10)));
+                if (job.isDone()) {
+                    LOG.info("Job {} was successfully done", job.getJobId());
+                    return true;
+                } else {
+                    LOG.error("Job {} was finished with error {}", job.getJobId(), job.getStatus().getError());
+                    return false;
+                }
+            } catch (InterruptedException e) {
+                LOG.error("Exception occurred during job {} execution", job.getJobId(), e);
+                return false;
+            }
+        }, executorService);
+
     }
 }
