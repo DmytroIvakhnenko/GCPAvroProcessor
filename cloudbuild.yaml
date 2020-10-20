@@ -26,6 +26,7 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--timeout=600' #Request timeout (300s default)
 
 images:
   - 'gcr.io/$PROJECT_ID/gcpavroprocessor:$COMMIT_SHA'
