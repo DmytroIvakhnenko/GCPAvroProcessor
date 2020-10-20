@@ -1,5 +1,6 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.controller;
 
+import com.google.cloud.RetryOption;
 import com.google.cloud.bigquery.Job;
 import com.google.cloud.storage.BlobInfo;
 import com.google.gson.Gson;
@@ -11,13 +12,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.threeten.bp.Duration;
 
 import java.util.Base64;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * PubsubController consumes a Pub/Sub message (JSON format)
@@ -55,7 +58,6 @@ public class PubSubController {
             Gson gson = new Gson();
             data = gson.fromJson(decodedMessage, JsonObject.class);
             LOG.info(data.toString());
-            //data = new JsonParser().parse(decodedMessage).getAsJsonObject();
         } catch (Exception e) {
             var msg = "Error: Invalid Pub/Sub message: data property is not valid base64 encoded JSON";
             LOG.error(msg, e);
@@ -83,9 +85,10 @@ public class PubSubController {
         return getResponse(gcsFileProcessorService.processFileViaIntegration(blobInfo));
     }
 
-    private ResponseEntity getResponse(ListenableFuture<Job> loadJob) {
+    private ResponseEntity getResponse(CompletableFuture<Job> loadJob) {
         try {
-            var job = loadJob.get();
+            Job job = loadJob.get(10, TimeUnit.MINUTES);
+            job.waitFor(RetryOption.totalTimeout(Duration.ofMinutes(10)));
             return new ResponseEntity(HttpStatus.OK);
         } catch (Exception e) {
             var msg = "Error during data load to BigQuery";

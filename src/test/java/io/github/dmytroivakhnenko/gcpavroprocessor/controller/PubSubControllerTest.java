@@ -1,6 +1,8 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.RetryOption;
+import com.google.cloud.bigquery.Job;
 import com.google.cloud.storage.BlobInfo;
 import com.google.gson.GsonBuilder;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
@@ -13,10 +15,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.util.concurrent.ListenableFuture;
 
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -35,8 +38,10 @@ public class PubSubControllerTest {
     private GCSFileProcessorService gcsFileProcessorService;
 
     @Mock
-    private ListenableFuture listenableFuture;
+    private CompletableFuture completableFuture;
 
+    @Mock
+    private Job job;
 
     @Test
     void whenEventMessageIsNullReturnBadRequestStatus() throws Exception {
@@ -85,7 +90,9 @@ public class PubSubControllerTest {
 
     @Test
     void whenEventMessageIsValidThenProcessFile() throws Exception {
-        when(gcsFileProcessorService.processFileViaIntegration(Mockito.any(BlobInfo.class))).thenReturn(listenableFuture);
+        when(gcsFileProcessorService.processFileViaIntegration(Mockito.any(BlobInfo.class))).thenReturn(completableFuture);
+        when(completableFuture.get(Mockito.anyLong(), Mockito.any(TimeUnit.class))).thenReturn(job);
+        when(job.waitFor(Mockito.any(RetryOption.class))).thenReturn(job);
         var event = new PubSubEvent();
         var message = event.new Message();
         var data = getEncodedJsonData("mybucket", "myname.avro");

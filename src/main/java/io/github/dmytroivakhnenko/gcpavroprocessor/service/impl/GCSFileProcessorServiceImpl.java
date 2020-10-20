@@ -2,7 +2,7 @@ package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 
 import com.google.cloud.ReadChannel;
 import com.google.cloud.WriteChannel;
-import com.google.cloud.bigquery.Job;
+import com.google.cloud.bigquery.*;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.concurrent.ListenableFuture;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -32,6 +31,7 @@ import java.nio.channels.Channels;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
@@ -63,41 +63,31 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
 */
 
     @Override
-    public ListenableFuture<Job> processFileViaIntegration(BlobInfo blobInfo) {
+    public CompletableFuture<Job> processFileViaIntegration(BlobInfo blobInfo) {
         var blob = storage.get(BlobId.of(blobInfo.getBucket(), blobInfo.getName()));
 
-        LOG.info("File " + new String(blob.getContent()) + " received by the non-streaming inbound channel adapter");
+        LOG.info(String.format("File %s/%s received", blobInfo.getBucket(), blobInfo.getName()));
         getClientsStreamFromAvroFile(blobInfo);
-        return bigQueryFileGateway.writeToBigQueryTable(blob.getContent(), tableNameFull);
+        //return bigQueryFileGateway.writeToBigQueryTable(blob.getContent(), tableNameFull);
+        String gcsPath = String.format("gs://%s/%s", blobInfo.getBucket(), blobInfo.getName());
 
+        return loadAvroFromGcs(gcsPath);
     }
 
-/*    private void loadAvroFromGcs(String sourceUri) {
+    private CompletableFuture<Job> loadAvroFromGcs(String sourceUri) {
         var datasetName = "clients_dataset";
         var tableName = "client_full";
-        try {
-            // Initialize client that will be used to send requests. This client only needs to be created
-            // once, and can be reused for multiple requests.
-            BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
+        // Initialize client that will be used to send requests. This client only needs to be created
+        // once, and can be reused for multiple requests.
+        BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
 
-            TableId tableId = TableId.of(datasetName, tableName);
-            LoadJobConfiguration loadConfig = LoadJobConfiguration.of(tableId, sourceUri, FormatOptions.avro());
+        TableId tableId = TableId.of(datasetName, tableName);
+        LoadJobConfiguration loadConfig = LoadJobConfiguration.of(tableId, sourceUri, FormatOptions.avro());
 
-            // Load data from a GCS Avro file into the table
-            Job job = bigquery.create(JobInfo.of(loadConfig));
-            // Blocks until this load table job completes its execution, either failing or succeeding.
-            job = job.waitFor();
-            if (job.isDone()) {
-                LOG.info("Avro from GCS successfully loaded in a table");
-            } else {
-                LOG.error(
-                        "BigQuery was unable to load into the table due to an error:"
-                                + job.getStatus().getError());
-            }
-        } catch (BigQueryException | InterruptedException e) {
-            LOG.error("Column not added during load append \n" + e.toString());
-        }
-    }*/
+        // Load data from a GCS Avro file into the table
+        CompletableFuture<Job> job = CompletableFuture.supplyAsync(() -> bigquery.create(JobInfo.of(loadConfig)));
+        return job;
+    }
 
     public List<Client> getClientsFromAvroFile(byte[] avroFileContent, BlobInfo blobInfo) {
         var clients = new ArrayList<Client>();
