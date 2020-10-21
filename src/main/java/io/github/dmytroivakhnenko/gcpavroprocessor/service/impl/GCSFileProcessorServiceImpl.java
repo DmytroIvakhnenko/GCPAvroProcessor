@@ -118,10 +118,10 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
 
         try (DataFileStream<Client> clientDataFileReader = new DataFileStream<>(avroFileInputStream, reader);
              DataFileWriter<ClientMandatory> clientMandatoryDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
-            clientMandatoryDataFileWriter.create(ClientMandatory.getClassSchema(), outputStream);
+            //clientMandatoryDataFileWriter.create(ClientMandatory.getClassSchema(), outputStream);
             while (clientDataFileReader.hasNext()) {
                 var client = clientDataFileReader.next();
-                clientMandatoryDataFileWriter.append(createMandatoryClient(client));
+                //clientMandatoryDataFileWriter.append(createMandatoryClient(client));
             }
         } catch (IOException e) {
             var msg = String.format("Exception occurs during getting clients from avro file: %s ", constructGCSUri(blobInfo));
