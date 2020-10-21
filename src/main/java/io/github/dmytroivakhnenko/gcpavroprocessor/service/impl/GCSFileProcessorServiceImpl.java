@@ -41,7 +41,7 @@ import java.util.stream.Stream;
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     private static final Logger LOG = LoggerFactory.getLogger(GCSFileProcessorServiceImpl.class);
 
-    private static final int CHUNK_SIZE = 8192 * 1024;
+    private static final int CHUNK_SIZE = 2 * 1024 * 1024;
     private static final Storage storage = StorageOptions.getDefaultInstance().getService();
     private static final BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
