@@ -133,14 +133,14 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     public BlobInfo validateAvroFileAndGetMandatoryClientBlobInfo(BlobInfo blobInfo) {
         var tmpName = UUID.randomUUID() + "tmp_file.avro";
         var tmpBlob = BlobInfo.newBuilder(tmpBucketName, tmpName).setContentType("application/avro").build();
-        var outputStream = createOutputStreamForNewFile(tmpBlob);
-        var avroFileInputStream = readFileFromStorage(blobInfo);
 
         LOG.info("Validation of file {} started, temporary file for mandatory info {} was created", constructGCSUri(blobInfo), constructGCSUri(tmpBlob));
         DatumReader<Client> reader = new SpecificDatumReader<>(Client.class);
         DatumWriter<ClientMandatory> clientDatumWriter = new SpecificDatumWriter<>(ClientMandatory.class);
 
-        try (DataFileStream<Client> clientDataFileReader = new DataFileStream<>(avroFileInputStream, reader);
+        try (var outputStream = createOutputStreamForNewFile(tmpBlob);
+             var avroFileInputStream = readFileFromStorage(blobInfo);
+             DataFileStream<Client> clientDataFileReader = new DataFileStream<>(avroFileInputStream, reader);
              DataFileWriter<ClientMandatory> clientMandatoryDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
             clientMandatoryDataFileWriter.create(ClientMandatory.getClassSchema(), outputStream);
             while (clientDataFileReader.hasNext()) {
