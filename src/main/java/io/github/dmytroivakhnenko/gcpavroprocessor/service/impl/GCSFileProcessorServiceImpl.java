@@ -122,7 +122,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
             clientMandatoryDataFileWriter.create(ClientMandatory.getClassSchema(), outputStream);
             while (clientDataFileReader.hasNext()) {
                 var client = clientDataFileReader.next();
-                //clientMandatoryDataFileWriter.append(createMandatoryClient(client));
+                clientMandatoryDataFileWriter.append(createMandatoryClient(client));
             }
         } catch (IOException e) {
             var msg = String.format("Exception occurs during getting clients from avro file: %s ", constructGCSUri(blobInfo));
