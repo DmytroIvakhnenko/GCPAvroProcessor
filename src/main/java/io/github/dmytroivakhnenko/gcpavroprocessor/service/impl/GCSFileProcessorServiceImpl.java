@@ -106,30 +106,6 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         }
     }
 
-/*    public BlobInfo validateAvroFileAndGetMandatoryClientBlobInfo(BlobInfo blobInfo) {
-        var tmpName = UUID.randomUUID() + "tmp_file.avro";
-        var tmpBlob = BlobInfo.newBuilder(tmpBucketName, tmpName).setContentType("application/avro").build();
-        var storageResource = new GoogleStorageResource(storage, constructGCSUri(blobInfo));
-        var blob = storageResource.createBlob();
-        var avroFileInputStream = readFileFromStorage(blobInfo);
-
-        LOG.info("**Validation of file {} started, temporary file for mandatory info {} was created", constructGCSUri(blobInfo), constructGCSUri(tmpBlob));
-        DatumReader<Client> reader = new SpecificDatumReader<>(Client.class);
-        DatumWriter<ClientMandatory> clientDatumWriter = new SpecificDatumWriter<>(ClientMandatory.class);
-
-        try (DataFileStream<Client> clientDataFileReader = new DataFileStream<>(avroFileInputStream, reader)) {
-            while (clientDataFileReader.hasNext()) {
-                var client = clientDataFileReader.next();
-            }
-        } catch (IOException e) {
-            var msg = String.format("Exception occurs during getting clients from avro file: %s ", constructGCSUri(blobInfo));
-            LOG.error(msg, e);
-            throw new AvroFileValidationException(msg);
-        }
-        LOG.info("Validation of file {} was successfully finished, temporary file for mandatory info {} was successfully loaded", constructGCSUri(blobInfo), constructGCSUri(tmpBlob));
-        return tmpBlob;
-    }*/
-
     public BlobInfo validateAvroFileAndGetMandatoryClientBlobInfo(BlobInfo blobInfo) {
         var tmpName = UUID.randomUUID() + "tmp_file.avro";
         var tmpBlob = BlobInfo.newBuilder(tmpBucketName, tmpName).setContentType("application/avro").build();
@@ -145,7 +121,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
             clientMandatoryDataFileWriter.create(ClientMandatory.getClassSchema(), outputStream);
             while (clientDataFileReader.hasNext()) {
                 var client = clientDataFileReader.next();
-                clientMandatoryDataFileWriter.append(createMandatoryClient(client));
+                //clientMandatoryDataFileWriter.append(createMandatoryClient(client));
             }
         } catch (IOException e) {
             var msg = String.format("Exception occurs during getting clients from avro file: %s ", constructGCSUri(blobInfo));
