@@ -140,14 +140,14 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         var storageResource = new GoogleStorageResource(storage, constructGCSUri(blobInfo));
         var blob = storageResource.createBlob();
         WriteChannel writer = blob.writer();
-        writer.setChunkSize(64 * 1024);
+        writer.setChunkSize(16 * 1024 * 1024);
         return Channels.newOutputStream(writer);
     }
 
     public InputStream readFileFromStorage(BlobInfo blobInfo) {
         var blob = storage.get(blobInfo.getBlobId());
         var reader = blob.reader();
-        reader.setChunkSize(64 * 1024);
+        reader.setChunkSize(16 * 1024 * 1024);
         return Channels.newInputStream(reader);
     }
 
