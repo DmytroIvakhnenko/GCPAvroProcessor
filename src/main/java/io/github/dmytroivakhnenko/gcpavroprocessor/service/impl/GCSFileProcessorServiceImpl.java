@@ -41,6 +41,7 @@ import java.util.stream.Stream;
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     private static final Logger LOG = LoggerFactory.getLogger(GCSFileProcessorServiceImpl.class);
 
+    private static final int CHUNK_SIZE = 8192 * 1024;
     private static final Storage storage = StorageOptions.getDefaultInstance().getService();
     private static final BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
@@ -140,14 +141,14 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         var storageResource = new GoogleStorageResource(storage, constructGCSUri(blobInfo));
         var blob = storageResource.createBlob();
         WriteChannel writer = blob.writer();
-        writer.setChunkSize(16 * 1024 * 1024);
+        writer.setChunkSize(CHUNK_SIZE);
         return Channels.newOutputStream(writer);
     }
 
     public InputStream readFileFromStorage(BlobInfo blobInfo) {
         var blob = storage.get(blobInfo.getBlobId());
         var reader = blob.reader();
-        reader.setChunkSize(16 * 1024 * 1024);
+        reader.setChunkSize(CHUNK_SIZE);
         return Channels.newInputStream(reader);
     }
 
