@@ -13,6 +13,7 @@ import io.github.dmytroivakhnenko.gcpavroprocessor.exception.AvroFileValidationE
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
 import io.github.dmytroivakhnenko.gcpavroprocessor.util.LoadInfo;
 import org.apache.avro.file.DataFileStream;
+import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumReader;
@@ -105,7 +106,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         }
     }
 
-    public BlobInfo validateAvroFileAndGetMandatoryClientBlobInfo(BlobInfo blobInfo) {
+/*    public BlobInfo validateAvroFileAndGetMandatoryClientBlobInfo(BlobInfo blobInfo) {
         var tmpName = UUID.randomUUID() + "tmp_file.avro";
         var tmpBlob = BlobInfo.newBuilder(tmpBucketName, tmpName).setContentType("application/avro").build();
         var storageResource = new GoogleStorageResource(storage, constructGCSUri(blobInfo));
@@ -127,9 +128,9 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         }
         LOG.info("Validation of file {} was successfully finished, temporary file for mandatory info {} was successfully loaded", constructGCSUri(blobInfo), constructGCSUri(tmpBlob));
         return tmpBlob;
-    }
+    }*/
 
-/*    public BlobInfo validateAvroFileAndGetMandatoryClientBlobInfo(BlobInfo blobInfo) {
+    public BlobInfo validateAvroFileAndGetMandatoryClientBlobInfo(BlobInfo blobInfo) {
         var tmpName = UUID.randomUUID() + "tmp_file.avro";
         var tmpBlob = BlobInfo.newBuilder(tmpBucketName, tmpName).setContentType("application/avro").build();
         var outputStream = createOutputStreamForNewFile(tmpBlob);
@@ -153,7 +154,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         }
         LOG.info("Validation of file {} was successfully finished, temporary file for mandatory info {} was successfully loaded", constructGCSUri(blobInfo), constructGCSUri(tmpBlob));
         return tmpBlob;
-    }*/
+    }
 
     private ClientMandatory createMandatoryClient(Client client) {
         return new ClientMandatory(client.getId(), client.getName());
