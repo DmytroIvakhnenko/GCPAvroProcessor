@@ -122,7 +122,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
             }
         } catch (IOException e) {
             var msg = String.format("Exception occurs during getting clients from avro file: %s ", constructGCSUri(blobInfo));
-            LOG.error(String.format(msg, e));
+            LOG.error(msg, e);
             throw new AvroFileValidationException(msg);
         }
         LOG.info("Validation of file {} was successfully finished, temporary file for mandatory info {} was successfully loaded", constructGCSUri(blobInfo), constructGCSUri(tmpBlob));
@@ -148,7 +148,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
             }
         } catch (IOException e) {
             var msg = String.format("Exception occurs during getting clients from avro file: %s ", constructGCSUri(blobInfo));
-            LOG.error(String.format(msg, e));
+            LOG.error(msg, e);
             throw new AvroFileValidationException(msg);
         }
         LOG.info("Validation of file {} was successfully finished, temporary file for mandatory info {} was successfully loaded", constructGCSUri(blobInfo), constructGCSUri(tmpBlob));
