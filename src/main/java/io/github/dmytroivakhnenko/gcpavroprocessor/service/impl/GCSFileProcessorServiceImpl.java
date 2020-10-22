@@ -68,7 +68,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     public List<CompletableFuture<Boolean>> processFileToBigQuery(BlobInfo blobInfo) {
         var blob = storage.get(BlobId.of(blobInfo.getBucket(), blobInfo.getName()));
         LOG.info("File {} started processing", constructGCSUri(blobInfo));
-        var mandatoryClientBlobInfo = validateAvroFileAndGetMandatoryClientBlobInfo(blobInfo);
+        var mandatoryClientBlobInfo = validateAvroFileAndCreateFileWithMandatoryFields(blobInfo);
         return Stream.of(LoadInfo.of(blobInfo, tableNameFull), LoadInfo.of(mandatoryClientBlobInfo, tableNameMandatory, true))
                 .map(this::loadAvroFileToBigQuery)
                 .collect(Collectors.toList());
@@ -107,7 +107,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         }
     }
 
-    public BlobInfo validateAvroFileAndGetMandatoryClientBlobInfo(BlobInfo blobInfo) {
+    public BlobInfo validateAvroFileAndCreateFileWithMandatoryFields(BlobInfo blobInfo) {
         var tmpName = UUID.randomUUID() + "tmp_file.avro";
         var tmpBlob = BlobInfo.newBuilder(tmpBucketName, tmpName).setContentType("application/avro").build();
 
@@ -115,8 +115,8 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         DatumReader<Client> reader = new SpecificDatumReader<>(Client.class);
         DatumWriter<ClientMandatory> clientDatumWriter = new SpecificDatumWriter<>(ClientMandatory.class);
 
-        try (var outputStream = createOutputStreamForNewFile(tmpBlob);
-             var avroFileInputStream = readFileFromStorage(blobInfo);
+        try (var outputStream = createOutputStreamForFile(tmpBlob);
+             var avroFileInputStream = createInputStreamForFile(blobInfo);
              DataFileStream<Client> clientDataFileReader = new DataFileStream<>(avroFileInputStream, reader);
              DataFileWriter<ClientMandatory> clientMandatoryDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
             clientMandatoryDataFileWriter.create(ClientMandatory.getClassSchema(), outputStream);
@@ -137,7 +137,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         return new ClientMandatory(client.getId(), client.getName());
     }
 
-    public OutputStream createOutputStreamForNewFile(BlobInfo blobInfo) {
+    public OutputStream createOutputStreamForFile(BlobInfo blobInfo) {
         var storageResource = new GoogleStorageResource(storage, constructGCSUri(blobInfo));
         var blob = storageResource.createBlob();
         WriteChannel writer = blob.writer();
@@ -145,7 +145,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         return Channels.newOutputStream(writer);
     }
 
-    public InputStream readFileFromStorage(BlobInfo blobInfo) {
+    public InputStream createInputStreamForFile(BlobInfo blobInfo) {
         var blob = storage.get(blobInfo.getBlobId());
         var reader = blob.reader();
         reader.setChunkSize(CHUNK_SIZE);
