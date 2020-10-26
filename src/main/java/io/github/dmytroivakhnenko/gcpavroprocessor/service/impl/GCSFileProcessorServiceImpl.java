@@ -143,6 +143,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     public BlobInfo validateAvroFileAndCreateFileWithMandatoryFields(BlobInfo blobInfo) {
         var tmpName = UUID.randomUUID() + "tmp_file.avro";
         var tmpBlob = BlobInfo.newBuilder(tmpBucketName, tmpName).setContentType("application/avro").build();
+        var counter = 0;
 
         LOG.info("Validation of file {} started, temporary file for mandatory info {} was created", constructGCSUri(blobInfo), constructGCSUri(tmpBlob));
         DatumReader<Client> reader = new SpecificDatumReader<>(Client.class);
@@ -154,6 +155,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
              DataFileWriter<ClientMandatory> clientMandatoryDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
             clientMandatoryDataFileWriter.create(ClientMandatory.getClassSchema(), outputStream);
             while (clientDataFileReader.hasNext()) {
+                counter++;
                 var client = clientDataFileReader.next();
                 clientMandatoryDataFileWriter.append(createMandatoryClient(client));
             }
@@ -162,6 +164,8 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
             LOG.error(msg, e);
             throw new AvroFileValidationException(msg);
         }
+
+        LOG.info("Number of processed Clients: {}", counter);
         LOG.info("Validation of file {} was successfully finished, temporary file for mandatory info {} was successfully loaded", constructGCSUri(blobInfo), constructGCSUri(tmpBlob));
         return tmpBlob;
     }
