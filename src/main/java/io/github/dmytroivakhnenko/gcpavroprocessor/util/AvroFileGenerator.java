@@ -65,10 +65,6 @@ public class AvroFileGenerator {
         }
     }
 
-    public void generateToGoogleStorage() {
-        //TODO
-    }
-
     public static void main(String[] args) {
         AvroFileGenerator ag = new AvroFileGenerator();
         ag.generateToTestFolder("test_300_clients", 1, 6_000_000);
