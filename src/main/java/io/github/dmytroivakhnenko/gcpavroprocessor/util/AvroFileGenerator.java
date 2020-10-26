@@ -18,7 +18,7 @@ import java.nio.file.Paths;
 
 public class AvroFileGenerator {
     private static final Logger LOG = LoggerFactory.getLogger(AvroFileGenerator.class);
-    private static final String AVRO_FILE_EXT = ".avro";
+    public static final String AVRO_FILE_EXT = ".avro";
     private static final String AVRO_FILE_PROJECT_PATH = "/src/test/resources/avro/";
     private static final int NAME_LENGTH = 10;
     private static final int PHONE_LENGTH = 8;

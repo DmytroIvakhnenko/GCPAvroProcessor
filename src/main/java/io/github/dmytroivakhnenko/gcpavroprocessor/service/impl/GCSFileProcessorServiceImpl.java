@@ -3,10 +3,7 @@ package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 import com.google.cloud.RetryOption;
 import com.google.cloud.WriteChannel;
 import com.google.cloud.bigquery.*;
-import com.google.cloud.storage.BlobId;
-import com.google.cloud.storage.BlobInfo;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
+import com.google.cloud.storage.*;
 import example.gcp.Client;
 import example.gcp.ClientMandatory;
 import io.github.dmytroivakhnenko.gcpavroprocessor.exception.AvroFileValidationException;
@@ -29,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.channels.Channels;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -36,6 +34,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static io.github.dmytroivakhnenko.gcpavroprocessor.util.AvroFileGenerator.AVRO_FILE_EXT;
+import static io.github.dmytroivakhnenko.gcpavroprocessor.util.AvroFileGenerator.createRandomClient;
 
 @Service
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
@@ -61,7 +62,37 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
 
     @Override
     public void generateRandomAvroFiles(String name, int fileCount, int clientsCount) {
-        //TODO
+        final String sourceBucketName = "gcp_avro_processor_generator_bucket";
+        final String targetBucketName = "gcp_avro_processor_tmp_bucket";
+
+        List<BlobInfo> filesList = new ArrayList<>();
+        BlobInfo blobInfo;
+        DatumWriter<Client> clientDatumWriter = new SpecificDatumWriter<>(Client.class);
+        var client = new Client();
+        for (int i = 0; i < fileCount; i++) {
+            blobInfo = BlobInfo.newBuilder(sourceBucketName, name + i + AVRO_FILE_EXT).setContentType("application/avro").build();
+            filesList.add(blobInfo);
+            try (var outputStream = createOutputStreamForFile(blobInfo);
+                 DataFileWriter<Client> clientDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
+                clientDataFileWriter.create(Client.getClassSchema(), outputStream);
+                for (int j = 0; j < clientsCount; j++) {
+                    client = createRandomClient();
+                    clientDataFileWriter.append(client);
+                }
+            } catch (IOException e) {
+                var msg = String.format("Exception occurs during generating clients for avro file: %s ", constructGCSUri(blobInfo));
+                LOG.error(msg, e);
+                throw new AvroFileValidationException(msg);
+            }
+        }
+        Blob blob;
+        CopyWriter copyWriter;
+        for (BlobInfo b : filesList) {
+            blob = storage.get(sourceBucketName, b.getName());
+            copyWriter = blob.copyTo(targetBucketName, b.getName());
+            Blob copiedBlob = copyWriter.getResult();
+            blob.delete();
+        }
     }
 
     @Override
