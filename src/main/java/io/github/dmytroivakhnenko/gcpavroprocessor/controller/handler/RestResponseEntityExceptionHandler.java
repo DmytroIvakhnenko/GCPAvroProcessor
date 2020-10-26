@@ -52,7 +52,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
      * @return BadRequest status (400) to allow failed message be saved in dead letter topic
      */
     @ExceptionHandler(value = Exception.class)
-    protected ResponseEntity<Object> defaultHandler(RuntimeException ex, WebRequest request) {
+    protected ResponseEntity<Object> defaultHandler(Exception ex, WebRequest request) {
         var msg = "Some exception occurs";
         LOG.error(msg, ex);
         return handleExceptionInternal(ex, msg, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
