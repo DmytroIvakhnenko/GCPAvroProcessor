@@ -21,8 +21,8 @@ public class ClientController {
     }
 
     @GetMapping("/generate")
-    public ResponseEntity<Void> generate(@RequestParam(required = false, defaultValue = "test") String name, @RequestParam(required = false, defaultValue = "1") int fileCount, @RequestParam(required = false, defaultValue = "1") int clientsCount) {
+    public ResponseEntity<String> generate(@RequestParam(required = false, defaultValue = "test") String name, @RequestParam(required = false, defaultValue = "1") int fileCount, @RequestParam(required = false, defaultValue = "1") int clientsCount) {
         gcsFileProcessorService.generateRandomAvroFiles(name, fileCount, clientsCount);
-        return new ResponseEntity<>(HttpStatus.OK);
+        return new ResponseEntity<>(String.format("%d file(s) with name %s and %d clients was(were) created", fileCount, name, clientsCount), HttpStatus.OK);
     }
 }

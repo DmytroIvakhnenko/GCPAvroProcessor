@@ -1,5 +1,6 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.controller.handler;
 
+import io.github.dmytroivakhnenko.gcpavroprocessor.exception.AvroFileGenerationException;
 import io.github.dmytroivakhnenko.gcpavroprocessor.exception.AvroFileValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +25,23 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
      */
     @ExceptionHandler(value = AvroFileValidationException.class)
     protected ResponseEntity<Object> avroFileValidationHandler(RuntimeException ex, WebRequest request) {
-        LOG.error("Exception occurs during avro file validation", ex);
-        return handleExceptionInternal(ex, null, new HttpHeaders(), HttpStatus.OK, request);
+        var msg = "Exception occurs during avro file validation";
+        LOG.error(msg, ex);
+        return handleExceptionInternal(ex, msg, new HttpHeaders(), HttpStatus.OK, request);
+    }
+
+    /**
+     * This method handles error when file generation failed.
+     *
+     * @param ex      - thrown exception
+     * @param request - web request
+     * @return Internal server error (500)
+     */
+    @ExceptionHandler(value = AvroFileGenerationException.class)
+    protected ResponseEntity<Object> avroFileGenerationExceptionHandler(RuntimeException ex, WebRequest request) {
+        var msg = "Exception occurs during avro file generation";
+        LOG.error(msg, ex);
+        return handleExceptionInternal(ex, msg, new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR, request);
     }
 
     /**
@@ -37,8 +53,9 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
      */
     @ExceptionHandler(value = Exception.class)
     protected ResponseEntity<Object> defaultHandler(RuntimeException ex, WebRequest request) {
-        LOG.error("Some exception occurs", ex);
-        return handleExceptionInternal(ex, null, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+        var msg = "Some exception occurs";
+        LOG.error(msg, ex);
+        return handleExceptionInternal(ex, msg, new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
     }
 
 

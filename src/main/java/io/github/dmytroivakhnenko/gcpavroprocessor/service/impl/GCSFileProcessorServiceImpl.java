@@ -6,6 +6,7 @@ import com.google.cloud.bigquery.*;
 import com.google.cloud.storage.*;
 import example.gcp.Client;
 import example.gcp.ClientMandatory;
+import io.github.dmytroivakhnenko.gcpavroprocessor.exception.AvroFileGenerationException;
 import io.github.dmytroivakhnenko.gcpavroprocessor.exception.AvroFileValidationException;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
 import io.github.dmytroivakhnenko.gcpavroprocessor.util.LoadInfo;
@@ -63,7 +64,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     @Override
     public void generateRandomAvroFiles(String name, int fileCount, int clientsCount) {
         final String sourceBucketName = "gcp_avro_processor_generator_bucket";
-        final String targetBucketName = "gcp_avro_processor_tmp_bucket";
+        final String targetBucketName = "gcp_avro_processor_input_bucket";
 
         List<BlobInfo> filesList = new ArrayList<>();
         BlobInfo blobInfo;
@@ -82,15 +83,16 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
             } catch (IOException e) {
                 var msg = String.format("Exception occurs during generating clients for avro file: %s ", constructGCSUri(blobInfo));
                 LOG.error(msg, e);
-                throw new AvroFileValidationException(msg);
+                throw new AvroFileGenerationException(msg);
             }
         }
         Blob blob;
+        Blob copiedBlob;
         CopyWriter copyWriter;
         for (BlobInfo b : filesList) {
             blob = storage.get(sourceBucketName, b.getName());
             copyWriter = blob.copyTo(targetBucketName, b.getName());
-            Blob copiedBlob = copyWriter.getResult();
+            copiedBlob = copyWriter.getResult();
             blob.delete();
         }
     }
