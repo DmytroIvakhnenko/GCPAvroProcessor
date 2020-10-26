@@ -27,6 +27,10 @@ steps:
       - 'managed'
       - '--allow-unauthenticated'
       - '--timeout=600' #Request timeout (300s default)
+      - '--concurrency'
+      - '20'
+      - '--memory'
+      - '1Gi'
 
 images:
   - 'gcr.io/$PROJECT_ID/gcpavroprocessor:$COMMIT_SHA'
