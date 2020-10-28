@@ -53,6 +53,10 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>
@@ -79,13 +83,16 @@
                 <version>${avro.version}</version>
                 <executions>
                     <execution>
-                        <phase>generate-sources</phase>
+                        <!-- use 'generate-sources' to generate new sources -->
+                        <phase>none</phase>
                         <goals>
                             <goal>schema</goal>
                         </goals>
                         <configuration>
-                            <sourceDirectory>src/main/resources/avroschema</sourceDirectory>
-                            <outputDirectory>${project.build.directory}/generated-sources</outputDirectory>
+                            <sourceDirectory>${project.basedir}/src/main/resources/avroschema</sourceDirectory>
+                            <outputDirectory>
+                                ${project.basedir}/src/main/java
+                            </outputDirectory>
                         </configuration>
                     </execution>
                 </executions>

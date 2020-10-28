@@ -4,10 +4,10 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
+import io.github.dmytroivakhnenko.gcpavroprocessor.util.AvroFileUtils;
 import io.github.dmytroivakhnenko.gcpavroprocessor.util.PubSubEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,9 +27,6 @@ import java.util.stream.Collectors;
 @RestController
 public class PubSubController {
     private static final Logger LOG = LoggerFactory.getLogger(PubSubController.class);
-
-    @Value("${avro.file.ext}")
-    private String avroFileExt;
 
     private final GCSFileProcessorService gcsFileProcessorService;
 
@@ -66,7 +63,7 @@ public class PubSubController {
         }
 
         // Validate if file has avro extension
-        if (!fileName.getAsString().endsWith(avroFileExt)) {
+        if (!fileName.getAsString().endsWith(AvroFileUtils.getAvroFileExt())) {
             LOG.info("File {} was skipped from processing due to the wrong extension", fileName.getAsString());
             return new ResponseEntity(HttpStatus.OK);
         }
