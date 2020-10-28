@@ -4,7 +4,6 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
-import io.github.dmytroivakhnenko.gcpavroprocessor.util.AvroFileUtils;
 import io.github.dmytroivakhnenko.gcpavroprocessor.util.PubSubEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +19,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+
+import static io.github.dmytroivakhnenko.gcpavroprocessor.util.AvroFileUtils.AVRO_FILE_EXT;
 
 /**
  * PubsubController consumes a Pub/Sub message (JSON format)
@@ -63,7 +64,7 @@ public class PubSubController {
         }
 
         // Validate if file has avro extension
-        if (!fileName.getAsString().endsWith(AvroFileUtils.getAvroFileExt())) {
+        if (!fileName.getAsString().endsWith(AVRO_FILE_EXT)) {
             LOG.info("File {} was skipped from processing due to the wrong extension", fileName.getAsString());
             return new ResponseEntity(HttpStatus.OK);
         }

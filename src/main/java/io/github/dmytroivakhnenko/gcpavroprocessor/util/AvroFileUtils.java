@@ -1,7 +1,6 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.util;
 
 import example.gcp.Client;
-import lombok.Getter;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumWriter;
@@ -9,7 +8,6 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,10 +19,7 @@ public class AvroFileUtils {
     private static final int NAME_LENGTH = 10;
     private static final int PHONE_LENGTH = 8;
     private static final int ADDRESS_LENGTH = 30;
-
-    @Getter
-    @Value("${avro.file.ext}")
-    private static String avroFileExt;
+    public static final String AVRO_FILE_EXT = ".avro";
 
     public static Client createRandomClient() {
         var client = new Client();
@@ -40,7 +35,7 @@ public class AvroFileUtils {
         DatumWriter<Client> clientDatumWriter = new SpecificDatumWriter<>(Client.class);
         try (DataFileWriter<Client> clientDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
             for (int i = 0; i < fileCount; i++) {
-                clientDataFileWriter.create(client.getSchema(), new File(Paths.get("").toAbsolutePath().normalize().toString() + AVRO_FILE_SAVE_PATH + name + i + avroFileExt));
+                clientDataFileWriter.create(client.getSchema(), new File(Paths.get("").toAbsolutePath().normalize().toString() + AVRO_FILE_SAVE_PATH + name + i + AVRO_FILE_EXT));
                 for (int j = 0; j < clientsCount; j++) {
                     client = createRandomClient();
                     clientDataFileWriter.append(client);

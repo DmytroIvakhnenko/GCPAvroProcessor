@@ -43,22 +43,22 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     private final BigQueryRepository bqRepository;
 
     @Value("${gcs.tmp.bucket.name}")
-    private static String tmpBucketName;
+    private String tmpBucketName;
 
     @Value("${gcs.input.bucket.name}")
-    private static String inputBucketName;
+    private String inputBucketName;
 
     @Value("${gcs.generator.bucket.name}")
-    private static String generatorBucketName;
+    private String generatorBucketName;
 
     @Value("${bigquery.tableName.full}")
-    private static String tableNameFull;
+    private String tableNameFull;
 
     @Value("${bigquery.tableName.mandatory}")
-    private static String tableNameMandatory;
+    private String tableNameMandatory;
 
     @Value("${spring.cloud.gcp.bigquery.datasetName}")
-    private static String datasetName;
+    private String datasetName;
 
     public GCSFileProcessorServiceImpl(CloudStorageRepository gcsFileProcessorService, BigQueryRepository bigQueryRepository) {
         this.gcStorage = gcsFileProcessorService;

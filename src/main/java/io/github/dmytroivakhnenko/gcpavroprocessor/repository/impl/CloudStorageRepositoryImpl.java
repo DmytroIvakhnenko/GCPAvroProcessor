@@ -8,6 +8,7 @@ import io.github.dmytroivakhnenko.gcpavroprocessor.repository.CloudStorageReposi
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gcp.storage.GoogleStorageResource;
+import org.springframework.stereotype.Repository;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -15,6 +16,7 @@ import java.nio.channels.Channels;
 
 import static io.github.dmytroivakhnenko.gcpavroprocessor.util.CloudFileUtils.constructGCSUri;
 
+@Repository
 public class CloudStorageRepositoryImpl implements CloudStorageRepository {
     private static final Logger LOG = LoggerFactory.getLogger(CloudStorageRepositoryImpl.class);
     private static final Storage storage = StorageOptions.getDefaultInstance().getService();

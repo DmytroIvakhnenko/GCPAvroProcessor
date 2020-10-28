@@ -5,9 +5,11 @@ import io.github.dmytroivakhnenko.gcpavroprocessor.repository.BigQueryRepository
 import io.github.dmytroivakhnenko.gcpavroprocessor.util.LoadInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Repository;
 
 import static io.github.dmytroivakhnenko.gcpavroprocessor.util.CloudFileUtils.constructGCSUri;
 
+@Repository
 public class BigQueryRepositoryImpl implements BigQueryRepository {
     private static final Logger LOG = LoggerFactory.getLogger(BigQueryRepositoryImpl.class);
     private static final BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
