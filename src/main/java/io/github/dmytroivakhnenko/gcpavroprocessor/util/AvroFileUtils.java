@@ -1,20 +1,19 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.util;
 
 import example.gcp.Client;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 
+@Slf4j
 public class AvroFileUtils {
-    private static final Logger LOG = LoggerFactory.getLogger(AvroFileUtils.class);
     private static final String AVRO_FILE_SAVE_PATH = "/src/test/resources/avro/";
     private static final int NAME_LENGTH = 10;
     private static final int PHONE_LENGTH = 8;
@@ -30,7 +29,7 @@ public class AvroFileUtils {
         return client;
     }
 
-    public void generateRandomAvroFilesToLocalFolder(final String name, final int fileCount, final int clientsCount) {
+    public static void generateRandomAvroFilesToLocalFolder(final String name, final int fileCount, final int clientsCount) {
         var client = new Client();
         DatumWriter<Client> clientDatumWriter = new SpecificDatumWriter<>(Client.class);
         try (DataFileWriter<Client> clientDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
@@ -43,12 +42,11 @@ public class AvroFileUtils {
                 clientDataFileWriter.close();
             }
         } catch (IOException e) {
-            LOG.error("Exception occurs during avro file generation", e);
+            log.error("Exception occurs during avro file generation", e);
         }
     }
 
     public static void main(String[] args) {
-        AvroFileUtils ag = new AvroFileUtils();
-        ag.generateRandomAvroFilesToLocalFolder("test_300_clients", 1, 6_000_000);
+        generateRandomAvroFilesToLocalFolder("test_300_clients", 1, 6_000_000);
     }
 }

@@ -5,8 +5,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
 import io.github.dmytroivakhnenko.gcpavroprocessor.util.PubSubEvent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,31 +26,26 @@ import static io.github.dmytroivakhnenko.gcpavroprocessor.util.AvroFileUtils.AVR
  * PubsubController consumes a Pub/Sub message (JSON format)
  */
 @RestController
+@RequiredArgsConstructor
+@Slf4j
 public class PubSubController {
-    private static final Logger LOG = LoggerFactory.getLogger(PubSubController.class);
-
     private final GCSFileProcessorService gcsFileProcessorService;
-
-    public PubSubController(
-            GCSFileProcessorService gcsFileProcessorService) {
-        this.gcsFileProcessorService = gcsFileProcessorService;
-    }
 
     @PostMapping("/pubsub")
     public ResponseEntity receiveMessage(@RequestBody PubSubEvent event) {
-        // Get PubSub message from request body.
+        // Get PubSub message from request body
         var payload = Optional.ofNullable(event.getMessage());
         if (payload.isEmpty()) {
             return logAndReturnBadRequest("Invalid Pub/Sub message format");
         }
 
-        // Decode the Pub/Sub message.
+        // Decode the Pub/Sub message
         var payloadData = payload.get().getData();
         JsonObject data;
         try {
             var decodedMessage = new String(Base64.getDecoder().decode(payloadData));
-            LOG.info("PubSub message received {}", decodedMessage);
-            Gson gson = new Gson();
+            log.info("PubSub message received {}", decodedMessage);
+            var gson = new Gson();
             data = gson.fromJson(decodedMessage, JsonObject.class);
         } catch (Exception e) {
             return logAndReturnBadRequest("Invalid Pub/Sub message: data property is not valid base64 encoded JSON", e);
@@ -58,14 +53,14 @@ public class PubSubController {
 
         var fileName = data.get("name");
         var bucketName = data.get("bucket");
-        // Validate if the message is a Cloud Storage event.
+        // Validate if the message is a Cloud Storage event
         if (Objects.isNull(fileName) || Objects.isNull(bucketName)) {
             return logAndReturnBadRequest("Invalid Cloud Storage notification: expected name and bucket properties");
         }
 
         // Validate if file has avro extension
         if (!fileName.getAsString().endsWith(AVRO_FILE_EXT)) {
-            LOG.info("File {} was skipped from processing due to the wrong extension", fileName.getAsString());
+            log.info("File {} was skipped from processing due to the wrong extension", fileName.getAsString());
             return new ResponseEntity(HttpStatus.OK);
         }
 
@@ -97,12 +92,12 @@ public class PubSubController {
     }
 
     private ResponseEntity logAndReturnBadRequest(String errorMsg) {
-        LOG.error(errorMsg);
+        log.error(errorMsg);
         return new ResponseEntity(errorMsg, HttpStatus.BAD_REQUEST);
     }
 
     private ResponseEntity logAndReturnBadRequest(String errorMsg, Exception e) {
-        LOG.error(errorMsg, e);
+        log.error(errorMsg, e);
         return new ResponseEntity(errorMsg, HttpStatus.BAD_REQUEST);
     }
 }

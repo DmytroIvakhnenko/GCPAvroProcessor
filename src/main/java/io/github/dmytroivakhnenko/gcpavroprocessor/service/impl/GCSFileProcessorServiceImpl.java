@@ -11,14 +11,12 @@ import io.github.dmytroivakhnenko.gcpavroprocessor.repository.BigQueryRepository
 import io.github.dmytroivakhnenko.gcpavroprocessor.repository.CloudStorageRepository;
 import io.github.dmytroivakhnenko.gcpavroprocessor.service.GCSFileProcessorService;
 import io.github.dmytroivakhnenko.gcpavroprocessor.util.LoadInfo;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.file.DataFileWriter;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.threeten.bp.Duration;
@@ -36,8 +34,9 @@ import static io.github.dmytroivakhnenko.gcpavroprocessor.util.ClientUtils.creat
 import static io.github.dmytroivakhnenko.gcpavroprocessor.util.CloudFileUtils.*;
 
 @Service
+@Slf4j
+@RequiredArgsConstructor
 public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
-    private static final Logger LOG = LoggerFactory.getLogger(GCSFileProcessorServiceImpl.class);
     private final ExecutorService executorService = Executors.newCachedThreadPool();
     private final CloudStorageRepository gcStorage;
     private final BigQueryRepository bqRepository;
@@ -60,16 +59,11 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     @Value("${spring.cloud.gcp.bigquery.datasetName}")
     private String datasetName;
 
-    public GCSFileProcessorServiceImpl(CloudStorageRepository gcsFileProcessorService, BigQueryRepository bigQueryRepository) {
-        this.gcStorage = gcsFileProcessorService;
-        this.bqRepository = bigQueryRepository;
-    }
-
     @Override
     public List<CompletableFuture<Boolean>> processFileToBigQuery(BlobInfo blobInfo) {
-        LOG.info("File {} started processing", constructGCSUri(blobInfo));
+        log.info("File {} started processing", constructGCSUri(blobInfo));
         var mandatoryClientBlobInfo = validateAvroFileAndCreateFileWithMandatoryFields(blobInfo);
-        return Stream.of(LoadInfo.of(blobInfo, tableNameFull), LoadInfo.of(mandatoryClientBlobInfo, tableNameMandatory, true))
+        return Stream.of(LoadInfo.builder().blobInfo(blobInfo).tableName(tableNameFull).build(), LoadInfo.builder().blobInfo(mandatoryClientBlobInfo).tableName(tableNameMandatory).temporaryFile(true).build())
                 .map(this::loadAvroFileToBigQuery)
                 .collect(Collectors.toList());
     }
@@ -77,12 +71,12 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     @Override
     public void generateRandomAvroFiles(String name, int fileCount, int clientsCount) {
         BlobInfo blobInfo;
-        DatumWriter<Client> clientDatumWriter = new SpecificDatumWriter<>(Client.class);
+        var clientDatumWriter = new SpecificDatumWriter<>(Client.class);
         var client = new Client();
         for (int i = 0; i < fileCount; i++) {
             blobInfo = getAvroFile(generatorBucketName, name + i);
             try (var outputStream = gcStorage.createFileAndGetOutputStream(blobInfo);
-                 DataFileWriter<Client> clientDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
+                 var clientDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
                 clientDataFileWriter.create(Client.getClassSchema(), outputStream);
                 for (int j = 0; j < clientsCount; j++) {
                     client = createRandomClient();
@@ -90,7 +84,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
                 }
             } catch (IOException e) {
                 var msg = String.format("Exception occurs during generating clients for avro file: %s ", constructGCSUri(blobInfo));
-                LOG.error(msg, e);
+                log.error(msg, e);
                 throw new AvroFileGenerationException(msg);
             }
             gcStorage.moveFileToBucket(blobInfo, inputBucketName);
@@ -109,45 +103,45 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         var tmpBlob = getTmpAvroFile(tmpBucketName);
         var counter = 0;
 
-        LOG.info("Validation of file {} started", constructGCSUri(blobInfo));
-        DatumReader<Client> reader = new SpecificDatumReader<>(Client.class);
-        DatumWriter<ClientMandatory> clientDatumWriter = new SpecificDatumWriter<>(ClientMandatory.class);
+        log.info("Validation of file {} started", constructGCSUri(blobInfo));
+        var clientDatumReader = new SpecificDatumReader<>(Client.class);
+        var mandatoryClientDatumWriter = new SpecificDatumWriter<>(ClientMandatory.class);
 
         try (var outputStream = gcStorage.createFileAndGetOutputStream(tmpBlob);
-             var avroFileInputStream = gcStorage.getInputStreamForFile(blobInfo);
-             DataFileStream<Client> clientDataFileReader = new DataFileStream<>(avroFileInputStream, reader);
-             DataFileWriter<ClientMandatory> clientMandatoryDataFileWriter = new DataFileWriter<>(clientDatumWriter)) {
-            clientMandatoryDataFileWriter.create(ClientMandatory.getClassSchema(), outputStream);
-            LOG.info("Temporary file for mandatory info {} was created", constructGCSUri(tmpBlob));
+             var inputStream = gcStorage.getInputStreamForFile(blobInfo);
+             var clientDataFileReader = new DataFileStream<>(inputStream, clientDatumReader);
+             var mandatoryClientDataFileWriter = new DataFileWriter<>(mandatoryClientDatumWriter)) {
+            mandatoryClientDataFileWriter.create(ClientMandatory.getClassSchema(), outputStream);
+            log.info("Temporary file for mandatory info {} was created", constructGCSUri(tmpBlob));
             while (clientDataFileReader.hasNext()) {
                 counter++;
                 var client = clientDataFileReader.next();
-                clientMandatoryDataFileWriter.append(createMandatoryClientFromClient(client));
+                mandatoryClientDataFileWriter.append(createMandatoryClientFromClient(client));
             }
         } catch (IOException e) {
             var msg = String.format("Exception occurs during getting clients from avro file: %s ", constructGCSUri(blobInfo));
-            LOG.error(msg, e);
+            log.error(msg, e);
             throw new AvroFileValidationException(msg);
         }
 
-        LOG.info("Number of processed Clients: {}", counter);
-        LOG.info("Validation of file {} was successfully finished, temporary file for mandatory info {} was successfully loaded", constructGCSUri(blobInfo), constructGCSUri(tmpBlob));
+        log.info("Number of processed Clients: {}", counter);
+        log.info("Validation of file {} was successfully finished, temporary file for mandatory info {} was successfully loaded", constructGCSUri(blobInfo), constructGCSUri(tmpBlob));
         return tmpBlob;
     }
 
     private Boolean waitForJob(Job job) {
         try {
-            LOG.info("Waiting for job {} to finish ...", job.getJobId());
+            log.info("Waiting for job {} to finish ...", job.getJobId());
             job.waitFor(RetryOption.totalTimeout(Duration.ofMinutes(10)));
             if (job.isDone()) {
-                LOG.info("Job {} was successfully done", job.getJobId());
+                log.info("Job {} was successfully done", job.getJobId());
                 return true;
             } else {
-                LOG.error("Job {} was finished with error {}", job.getJobId(), job.getStatus().getError());
+                log.error("Job {} was finished with error {}", job.getJobId(), job.getStatus().getError());
                 return false;
             }
         } catch (InterruptedException e) {
-            LOG.error("Exception occurred during job {} execution", job.getJobId(), e);
+            log.error("Exception occurred during job {} execution", job.getJobId(), e);
             return false;
         }
     }
