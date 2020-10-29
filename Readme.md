@@ -10,5 +10,5 @@ Please check image below for CI/CD details:
 
 Please check image below for architecture details:
 
-[![](diagrams/gcravroprocessorarchitecturepng.png)](diagrams/gcravroprocessorarchitecturepng.png)
+[![](diagrams/gcravroprocessorarchitecture.png)](diagrams/gcravroprocessorarchitecture.png)
 
