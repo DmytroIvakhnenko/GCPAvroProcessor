@@ -28,7 +28,7 @@ steps:
       - '--allow-unauthenticated'
       - '--timeout=600' #Request timeout (300s default)
       - '--concurrency'
-      - '20'
+      - '10'
       - '--memory'
       - '1Gi'
 
