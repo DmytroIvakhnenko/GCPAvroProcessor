@@ -1,7 +1,5 @@
 package io.github.dmytroivakhnenko.gcpavroprocessor.service.impl;
 
-import com.google.cloud.RetryOption;
-import com.google.cloud.bigquery.Job;
 import com.google.cloud.storage.BlobInfo;
 import example.gcp.Client;
 import example.gcp.ClientMandatory;
@@ -19,7 +17,6 @@ import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.threeten.bp.Duration;
 
 import java.io.IOException;
 import java.util.List;
@@ -92,7 +89,7 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
     }
 
     private CompletableFuture<Boolean> loadAvroFileToBigQuery(LoadInfo loadInfo) {
-        var future = CompletableFuture.supplyAsync(() -> waitForJob(bqRepository.loadAvroFileToRepository(datasetName, loadInfo)), executorService);
+        var future = CompletableFuture.supplyAsync(() -> bqRepository.waitForJob(bqRepository.loadAvroFileToDataset(datasetName, loadInfo)), executorService);
         if (loadInfo.isTemporaryFile()) {
             future.thenRun(() -> gcStorage.deleteFile(loadInfo.getBlobInfo()));
         }
@@ -127,22 +124,5 @@ public class GCSFileProcessorServiceImpl implements GCSFileProcessorService {
         log.info("Number of processed Clients: {}", counter);
         log.info("Validation of file {} was successfully finished, temporary file for mandatory info {} was successfully loaded", constructGCSUri(blobInfo), constructGCSUri(tmpBlob));
         return tmpBlob;
-    }
-
-    private Boolean waitForJob(Job job) {
-        try {
-            log.info("Waiting for job {} to finish ...", job.getJobId());
-            job.waitFor(RetryOption.totalTimeout(Duration.ofMinutes(10)));
-            if (job.isDone()) {
-                log.info("Job {} was successfully done", job.getJobId());
-                return true;
-            } else {
-                log.error("Job {} was finished with error {}", job.getJobId(), job.getStatus().getError());
-                return false;
-            }
-        } catch (InterruptedException e) {
-            log.error("Exception occurred during job {} execution", job.getJobId(), e);
-            return false;
-        }
     }
 }
